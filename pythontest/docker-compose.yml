@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+  mission_handler:
+    build: ./MissionHandler
+    volumes:
+      - ./MissionHandler:/app
+    networks:
+      - drone_network
+    depends_on:
+      - simulation
+
+  simulation:
+    build: ./simulation
+    volumes:
+      - ./simulation:/app
+
+    networks:
+      - drone_network
+
+networks:
+  drone_network:
+    driver: bridge
