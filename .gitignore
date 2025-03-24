@@ -1,0 +1,34 @@
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore Docker-related files
+**/Dockerfile~
+
+# Ignore virtual environments
+venv/
+env/
+*.env
+
+# Ignore dataset or terrain files (optional, if they are large or not meant to be in the repo)
+terrain/
+*.DAT
+
+# Ignore dependency installation files (optional, if they should be generated locally)
+*.parms
+req.txt
+
+# Ignore IDE/editor-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore unnecessary directories
+#dumbfuckdegenerate/
