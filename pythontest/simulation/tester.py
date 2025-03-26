@@ -9,6 +9,15 @@ from Boat import Boat
 
 R = 6371000 # Earth radius
 
+def set_parameter(connection, param_name, value):
+    """Sets an ArduPilot parameter via MAVLink"""
+    connection.mav.param_set_send(
+        connection.target_system, connection.target_component,
+        param_name.encode(),  # Encode parameter name
+        float(value),         # Parameter value
+        mavutil.mavlink.MAV_PARAM_TYPE_REAL32  # Data type
+    )
+
 # Calculate distance between coordinates
 def dist_between_coords(lat1, lon1, lat2, lon2):
     lat1_rad = np.deg2rad(lat1)
@@ -75,6 +84,7 @@ def tester():
     boat_msg = boat.get_message('HEARTBEAT')
     
     sleep(5)
+
     # Set modes
     rc = RedisClient()
 
@@ -93,7 +103,8 @@ def tester():
     drone.set_servo(3, 1800)
     sleep(3)
 
-    glide_slope = 1/10
+    Gr = 1/10
+    descent_lookahead = 40
     started_descent = False
 
     # Main loop
@@ -128,9 +139,11 @@ def tester():
 
         # Follow boat
         if drone.stage == "follow":
+            # P2 should maybe be calculated with drone_altitude - boat_altitude 
+            # since we are not aming for 0 we are aiming for 3
 
             # Calculate P2 and P3
-            P2_distance = calc_P2(drone_speed, desired_boat_speed, drone_altitude, glide_slope)
+            P2_distance = calc_P2(drone_speed, desired_boat_speed, drone_altitude, Gr)
             P2_lat, P2_lon = calc_look_ahead_point(boat_lat, boat_lon, boat_heading-180, P2_distance)
 
             P1_distance = P2_distance + 20
@@ -140,8 +153,9 @@ def tester():
             drone.follow_target([target_lat], [target_lon], [10])
 
             drone_distance_to_boat = dist_between_coords(drone_lat, drone_lon, boat_lat, boat_lon)
-            print(f"P3 distance_ {P1_distance}")
+            print(f"P1 distance_ {P1_distance}")
             print(f"Drone distance: {drone_distance_to_boat}")
+
 
             if drone_distance_to_boat > P1_distance+10:
                 boat.set_speed(desired_boat_speed)
@@ -154,7 +168,6 @@ def tester():
             boat_target_lon = boat_lon
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
             boat.flush_messages()
-            # Continously calculate the d_start distance as in equation in latex
 
         # Land on boat
         elif drone.stage == "land":
@@ -165,33 +178,43 @@ def tester():
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
             boat.flush_messages()
 
-            # Do initial descent start calculation ONCE, set G_r and calculate drone_distance
-            # Set prev_Gr and prev_drone_distance to those values
-            # Also set prev_target_waypoint to a point "prev_drone_dist" in front
-
-            # Calculate wanted altitude with prev_Gr and drone distance to previous target
-
-            P2_distance = calc_P2(drone_speed, desired_boat_speed, drone_altitude, glide_slope)
+            P2_distance = calc_P2(drone_speed, desired_boat_speed, drone_altitude, Gr)
             P2_lat, P2_lon = calc_look_ahead_point(boat_lat, boat_lon, boat_heading-180, P2_distance)
 
             drone_distance_to_boat = dist_between_coords(drone_lat, drone_lon, boat_lat, boat_lon)
-            boat_distance_to_target = calc_landing_point_dist_boat(drone_distance_to_boat, drone_speed, boat_speed)
-            # Save coordinate for P3 aswell
+            boat_distance_to_target = calc_landing_point_dist_boat(drone_distance_to_boat, drone_speed, desired_boat_speed)
+
+            P3_lat, P3_lon = calc_look_ahead_point(boat_lat, boat_lon, boat_heading, boat_distance_to_target) #<------- Target waypoint
 
             if (drone_distance_to_boat > P2_distance) and (not started_descent):
-                # Think we can set prev_P3 and prev_Gr in this if clause and then when it goes to 
-                # The else clause those will be set and we start updating prev with current ones
+                prev_P3_lat,prev_P3_lon = P3_lat, P3_lon
+                prev_Gr = Gr
                 boat_lh_lat, boat_lh_lon = calc_look_ahead_point(boat_lat, boat_lon, boat_heading, 30)
                 drone.follow_target([boat_lh_lat], [boat_lh_lon], [10])
                 boat.set_speed(desired_boat_speed)
 
             else:
-                # Calculte z_wanted from prev_Gr and drone distance to prev_P3
-                # Use this z_wanted along with drone distance to current P3 to calculate new_Gr
-                # Set prev_Gr to new_Gr and prev_P3 to current P3
-                P3_lat, P3_lon = calc_look_ahead_point(boat_lat, boat_lon, boat_heading, boat_distance_to_target) #<------- Target waypoint
-                drone.follow_target([P3_lat], [P3_lon], [3-8])
+                distance_to_prev_target = dist_between_coords(drone_lat, drone_lon, prev_P3_lat, prev_P3_lon)
+                z_wanted = (distance_to_prev_target-descent_lookahead)*prev_Gr # - descent_lookahead is lookahead to go to an altitude we should be at farther in the future
+                # Prob need some adaptive look ahead distance depending on Gr
+                print(f"prev_Gr: {prev_Gr}")
+
+                drone.follow_target([P3_lat], [P3_lon], [min(10,3+z_wanted-8)]) #3-8 (Boat altitude-drone starting altitude)
                 boat.set_speed(desired_boat_speed)
+                print(f"Distance to previous waypoint: {int(distance_to_prev_target)}")
+                print(f"Wanted altitude: {int(3+z_wanted-8)}")
+                print(f"Drone altitude: {drone_altitude-8}")
+
+                distance_to_current_waypoint = dist_between_coords(drone_lat, drone_lon, P3_lat, P3_lon)
+                print(f"Distance to current waypoint: {int(distance_to_current_waypoint)}")
+                prev_P3_lat, prev_P3_lon = P3_lat, P3_lon
+
+                new_Gr = z_wanted/distance_to_current_waypoint
+                prev_Gr = new_Gr
+
+                started_descent = True
+
+                
 
             # Calculate new Gr from new drone distance to target and wanted altitude
 
