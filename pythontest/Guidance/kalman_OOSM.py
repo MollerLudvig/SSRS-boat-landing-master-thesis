@@ -4,7 +4,7 @@ from collections import deque
 from geopy.distance import geodesic
 
 class KalmanFilterGPS:
-    def __init__(self, initial_lat, initial_lon, process_noise_variance=0.001, buffer_size=10):
+    def __init__(self, initial_lat, initial_lon, process_noise_variance=0.001, buffer_size=50):
         self.n = 4  # State: [lat, lon, speed, yaw]
         self.x = np.array([[initial_lat], [initial_lon], [0], [0]])  # Initial state
         self.P = np.eye(self.n)  # Covariance
@@ -12,6 +12,7 @@ class KalmanFilterGPS:
         self.last_time = time.time()
         self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
 
+        # Measurement matrices
         self.H_camera = np.array([[1, 0, 0, 0],
                                   [0, 1, 0, 0]])
         self.H_AIS = np.eye(4)
