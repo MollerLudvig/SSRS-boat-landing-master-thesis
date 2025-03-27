@@ -1,15 +1,16 @@
 import numpy as np
 import time
 from collections import deque
+from geopy.distance import geodesic
 
-class KalmanFilter2DYawVariableDT:
-    def __init__(self, process_noise_variance=0.001, buffer_size=50):
-        self.n = 4  # State dimension: [x, y, v, yaw]
-        self.x = np.zeros((self.n, 1))  # Initial state
+class KalmanFilterGPS:
+    def __init__(self, initial_lat, initial_lon, process_noise_variance=0.001, buffer_size=10):
+        self.n = 4  # State: [lat, lon, speed, yaw]
+        self.x = np.array([[initial_lat], [initial_lon], [0], [0]])  # Initial state
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
-        self.last_time = time.time()  # Time of last update
-        self.state_buffer = deque(maxlen=buffer_size)  # Stores (timestamp, state, covariance)
+        self.last_time = time.time()
+        self.state_buffer = deque(maxlen=buffer_size)
 
         self.H_camera = np.array([[1, 0, 0, 0],
                                   [0, 1, 0, 0]])
@@ -27,15 +28,15 @@ class KalmanFilter2DYawVariableDT:
         if dt is None:
             dt = self._update_dt()
 
-        x, y, v, psi = self.x.flatten()
-        x_new = x + v * np.cos(psi) * dt
-        y_new = y + v * np.sin(psi) * dt
-        v_new = v
-        psi_new = psi  # Assuming yaw is slowly changing
+        lat, lon, v, psi = self.x.flatten()
+        
+        # Convert velocity (m/s) and heading to lat/lon displacement
+        displacement_m = v * dt
+        new_lat, new_lon = self._move_in_latlon(lat, lon, displacement_m, psi)
 
-        self.x = np.array([[x_new], [y_new], [v_new], [psi_new]])
+        self.x = np.array([[new_lat], [new_lon], [v], [psi]])
 
-        # Compute linearized state transition matrix (F)
+        # Linearized state transition matrix
         F = np.array([
             [1, 0, np.cos(psi) * dt, -v * np.sin(psi) * dt],
             [0, 1, np.sin(psi) * dt,  v * np.cos(psi) * dt],
@@ -43,7 +44,7 @@ class KalmanFilter2DYawVariableDT:
             [0, 0, 0, 1]
         ])
 
-        # Process noise covariance (Q)
+        # Process noise covariance
         dt2 = dt ** 2
         Q = self.process_noise_variance * np.array([
             [dt2, 0, 0, 0],
@@ -71,11 +72,7 @@ class KalmanFilter2DYawVariableDT:
         self.P = (I - K @ H) @ self.P
 
     def handle_OOSM(self, z, H, R, timestamp):
-        """
-        Handles out-of-sequence measurements by rolling back the state,
-        applying the correction, and re-propagating to the current time.
-        """
-        # Find the closest past state before the timestamp
+        """Handles delayed measurements by rolling back, updating, and re-predicting."""
         past_state = None
         for t, x, P in reversed(self.state_buffer):
             if t <= timestamp:
@@ -102,26 +99,27 @@ class KalmanFilter2DYawVariableDT:
         dt_to_present = self.last_time - timestamp
         self.predict(dt_to_present)
 
-    
-
     def update_camera(self, z, timestamp, R_camera=None):
-        """Update with a camera measurement (global coordinates [x, y])."""
+        """Update with a camera measurement (global coordinates [lat, lon])."""
         if R_camera is None:
             R_camera = np.eye(2) * 0.01
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
-        """Update with AIS measurement (global [x, y, speed, yaw])."""
+        """Update with AIS measurement (global [lat, lon, speed, yaw])."""
         if R_AIS is None:
             R_AIS = np.eye(4) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
+    def _move_in_latlon(self, lat, lon, displacement_m, heading_rad):
+        """Move from (lat, lon) a certain distance (m) in a given heading (rad)."""
+        new_point = geodesic(meters=displacement_m).destination((lat, lon), np.degrees(heading_rad))
+        return new_point.latitude, new_point.longitude
+
 
 # Example usage:
 if __name__ == '__main__':
-    kf = KalmanFilter2DYawVariableDT()
-
-    kf.x = np.array([[100], [50], [5], [0.1]])
+    kf = KalmanFilterGPS(57.672, 11.841)  # Initialize with ship's starting coordinates
     kf.last_time = time.time()
 
     import random
@@ -132,17 +130,17 @@ if __name__ == '__main__':
         print("Predicted state:", kf.x.T)
 
         if random.random() < 0.3:
-            cam_meas = kf.x[0:2] + np.random.randn(2, 1) * 0.1
+            cam_meas = kf.x[0:2] + np.random.randn(2, 1) * 0.0001
             kf.update_camera(cam_meas, current_time)
             print("Camera update:", kf.x.T)
 
         if random.random() < 0.2:
-            delay = random.uniform(0, 1.5)  # Introduce a delay in AIS measurements
+            delay = random.uniform(0, 1.5)  # AIS delay simulation
             ais_time = current_time - delay
             speed = kf.x[2, 0] + np.random.randn() * 0.1
             yaw = kf.x[3, 0] + np.random.randn() * 0.01
-            ais_meas = np.array([[kf.x[0, 0] + np.random.randn() * 0.1],
-                                 [kf.x[1, 0] + np.random.randn() * 0.1],
+            ais_meas = np.array([[kf.x[0, 0] + np.random.randn() * 0.0001],
+                                 [kf.x[1, 0] + np.random.randn() * 0.0001],
                                  [speed],
                                  [yaw]])
             kf.update_AIS(ais_meas, ais_time)
