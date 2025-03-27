@@ -10,7 +10,7 @@ class KalmanFilterGPS:
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
         self.last_time = time.time()
-        self.state_buffer = deque(maxlen=buffer_size)
+        self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
 
         self.H_camera = np.array([[1, 0, 0, 0],
                                   [0, 1, 0, 0]])
@@ -72,7 +72,11 @@ class KalmanFilterGPS:
         self.P = (I - K @ H) @ self.P
 
     def handle_OOSM(self, z, H, R, timestamp):
-        """Handles delayed measurements by rolling back, updating, and re-predicting."""
+        """
+        Handles out-of-sequence measurements by rolling back the state,
+        applying the correction, and re-propagating to the current time.
+        """
+        # Find the closest past state before the timestamp
         past_state = None
         for t, x, P in reversed(self.state_buffer):
             if t <= timestamp:
