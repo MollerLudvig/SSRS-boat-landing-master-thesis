@@ -3,7 +3,7 @@ import time
 from collections import deque
 
 class KalmanFilter2DYawVariableDT:
-    def __init__(self, process_noise_variance=0.001, buffer_size=10):
+    def __init__(self, process_noise_variance=0.001, buffer_size=50):
         self.n = 4  # State dimension: [x, y, v, yaw]
         self.x = np.zeros((self.n, 1))  # Initial state
         self.P = np.eye(self.n)  # Covariance
@@ -101,6 +101,8 @@ class KalmanFilter2DYawVariableDT:
         # Re-propagate forward to the present
         dt_to_present = self.last_time - timestamp
         self.predict(dt_to_present)
+
+    
 
     def update_camera(self, z, timestamp, R_camera=None):
         """Update with a camera measurement (global coordinates [x, y])."""
