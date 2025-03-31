@@ -22,6 +22,7 @@ class AISTracker:
         self.long = None
         self.sog = None
         self.yaw = None
+        self.rateOfTurn = None
         self.timestampUnix = time.time()
         self.timestamp = datetime.now(timezone.utc)
         self.timestatus = "Uninitiated"
@@ -58,6 +59,7 @@ class AISTracker:
                             AIS.long = ais_message['Longitude']
                             AIS.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
                             AIS.yaw = ais_message['TrueHeading']
+                            self.rateOfTurn = ais_message.get('RateOfTurn')
 
                             # Do something with the data
                             self.print_AIS_data()
@@ -88,10 +90,13 @@ class AISTracker:
         with open(self.sessionFileName, "a", newline="") as file:
             writer = csv.writer(file)
             if not fileExists:  # Write header only if file didn't exist previously
-                writer.writerow(["Timestamp", "TimestampUnix", "Timestatus", "ShipId", "Latitude", "Longitude", "Speed", "Heading"])
+                writer.writerow([
+                    "Timestamp", "TimestampUnix", "Timestatus", "ShipId",
+                    "Latitude", "Longitude", "Speed", "Heading", "RateOfTurn"
+                    ])
             writer.writerow([
                 self.timestamp, self.timestampUnix, self.timestatus,
-                self.id, self.lat, self.long, self.sog, self.yaw
+                self.id, self.lat, self.long, self.sog, self.yaw, self.rateOfTurn
             ])
 
 
@@ -101,22 +106,15 @@ class AISTracker:
         Print the AIS data in a readable format.
         """
         print("\nAIS data:")
-        print(f'Time: {self.timestamp}\n' +
-              f'Time unix: {self.timestampUnix}\n' +
-              f'Time status: {self.timestatus}\n' +
-              f'ShipId: {self.id}\n' +
-              f'Latitude: {self.lat}\n' +
-              f'Longitude: {self.long}\n' +
-              f'Speed: {self.sog}\n' +
-              f'Heading: {self.yaw}\n')
-
-    def print_AIS_data_dict(self):
-        """
-        Print the AIS data as a dictionary.
-        """
-        AIS_data = self.get_AIS_data()
-        print(AIS_data)
-
+        print(f"Time: {self.timestamp}")
+        print(f"Time unix: {self.timestampUnix}")
+        print(f"Time status: {self.timestatus}")
+        print(f"ShipId: {self.id}")
+        print(f"Latitude: {self.lat}")
+        print(f"Longitude: {self.long}")
+        print(f"Speed: {self.sog}")
+        print(f"Heading: {self.yaw}")
+        print(f"Rate of Turn: {self.rateOfTurn}")
 
 
     """
@@ -133,6 +131,7 @@ class AISTracker:
             "long": self.long,
             "sog": self.sog,
             "yaw": self.yaw,
+            "rateOfTurn": self.rateOfTurn,
             "timestampUnix": self.timestampUnix,
             "timestamp": self.timestamp,
             "timestatus": self.timestatus
