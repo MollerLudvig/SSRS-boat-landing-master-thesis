@@ -74,17 +74,20 @@ class AISTracker:
     def save_AIS_data_csv(self):
         directory = "data"
         os.makedirs(directory, exist_ok=True)
-        base_filename = os.path.join(directory, self.csvFileName)
-        file_number = 1
-        filename = f"{base_filename}.csv"
-        
-        while os.path.exists(filename):
-            filename = f"{base_filename}_{file_number}.csv"
-            file_number += 1
-        
-        with open(filename, "a", newline="") as file:
+
+        # Generate the session file name only once per run
+        if not hasattr(self, 'sessionFileName'):
+            baseFilename = os.path.join(directory, self.csvFileName)
+            fileNumber = 1
+            while os.path.exists(f"{baseFilename}_{fileNumber}.csv"):
+                fileNumber += 1
+            self.sessionFileName = f"{baseFilename}_{fileNumber}.csv"
+
+        fileExists = os.path.exists(self.sessionFileName)
+
+        with open(self.sessionFileName, "a", newline="") as file:
             writer = csv.writer(file)
-            if file.tell() == 0:
+            if not fileExists:  # Write header only if file didn't exist previously
                 writer.writerow(["Timestamp", "TimestampUnix", "Timestatus", "ShipId", "Latitude", "Longitude", "Speed", "Heading"])
             writer.writerow([
                 self.timestamp, self.timestampUnix, self.timestatus,
