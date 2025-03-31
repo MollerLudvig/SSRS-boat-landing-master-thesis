@@ -8,13 +8,13 @@ from datetime import datetime, timezone, timedelta
 import pytz
 from dotenv import load_dotenv
 
-# Load api key from env/.env file
-env_path = os.path.join("env", ".env")
-load_dotenv(env_path)
+verbose = False
+
+
 
 class AISTracker:
-    def __init__(self, MMSI="265509950", csvFileName="AIS_data"):
-        self.APIKey = os.getenv("AIS_API_KEY", "YOUR_DEFAULT_API_KEY") 
+    def __init__(self, MMSI="265509950", csvFileName="AIS_data", apiKey=None):
+        self.APIKey = apiKey if apiKey else os.getenv("AIS_API_KEY", "YOUR_DEFAULT_API_KEY")
         self.MMSI = MMSI
         self.csvFileName = csvFileName
         self.id = None
@@ -37,15 +37,18 @@ class AISTracker:
                     subscribe_message = {"APIKey": self.APIKey,  # Required
                                         "BoundingBoxes": [[[-90, -180], [90, 180]]], # Required
                                         "FiltersShipMMSI": [self.MMSI], # Vessel MMSI data (retrieved from AIS marinetraffic)
-                                        "FilterMessageTypes": ["PositionReport"]} # Optional men e la go enna
+                                        # "FilterMessageTypes": ["PositionReport"] # Optional men e la go enna
+                    }
 
+                    if verbose:
+                        print(f"key{self.APIKey} connecting to AIS stream...")
+                    
                     subscribe_message_json = json.dumps(subscribe_message)
                     await websocket.send(subscribe_message_json)
 
                     async for message_json in websocket:
                         message = json.loads(message_json)
                         message_type = message["MessageType"]
-
                         if message_type == "PositionReport":
                             # the message parameter contains a key of the message type which contains the message itself
                             ais_message = message['Message']['PositionReport']
@@ -62,15 +65,18 @@ class AISTracker:
                             self.rateOfTurn = ais_message.get('RateOfTurn')
 
                             # Do something with the data
-                            self.print_AIS_data()
+                            if verbose:
+                                self.print_AIS_data()
+                            else:
+                                print(f"Ship {self.csvFileName} received PositionReport")
                             self.save_AIS_data_csv()
 
 
             except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK) as e:
-                print(f"WebSocket connection lost: {e}. Reconnecting in 5 seconds...")
+                print(f"Ship {self.csvFileName}. WebSocket connection lost: {e}. Reconnecting in 5 seconds...")
                 await asyncio.sleep(5)
             except Exception as e:
-                print(f"Unexpected error: {e}. Reconnecting in 5 seconds...")
+                print(f"Ship {self.csvFileName}. Unexpected error: {e}. Reconnecting in 5 seconds...")
                 await asyncio.sleep(5)
 
     def save_AIS_data_csv(self):
@@ -204,7 +210,56 @@ class AISTracker:
                     self.timestatus = "Positioning is inoperative"
                 case _:
                     self.timestatus = "Unknown timestamp value"
+    
+def load_api_keys(csv_path="api_keys.csv"):
+    """Load API keys from a CSV file."""
+    api_keys = []
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"API keys file '{csv_path}' not found.")
+    
+    with open(csv_path, newline="") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            api_keys.append(row["api_key"].strip())  # Ensure no extra spaces
+    
+    if not api_keys:
+        raise ValueError("No API keys found in CSV file.")
+
+    return api_keys
 
 if __name__ == "__main__":
-    AIS = AISTracker()
-    asyncio.run(AIS.connect_ais_stream())
+    # List of MMSI numbers to track
+    vessels = [
+        # ("266460000", "fisk1"),
+        # ("219340000", "fisk2"),
+        # ("265650950", "rivo"),
+        # ("265547210", "arlan"),
+        # ("265509950", "vesta"),
+        # ("265547270", "froja"),
+        # ("265547230", "ylva"),
+        # ("265547240", "vipan"),
+        ("265650970", "valo")
+        # ("265548670", "fjordska"),
+        # ("265812010", "snuten"),
+        # ("265547250", "skarven"),
+        # ("265739650", "alvfrida"),
+        # ("265029700", "elois"),
+        # ("265501910", "hamnen")
+    ]
+
+    # Load API keys from CSV
+    API_KEYS = load_api_keys()
+    if verbose:
+        print(f"Loaded {len(API_KEYS)} API keys from CSV.")
+
+    # Assign API keys to each vessel in a round-robin fashion
+    trackers = [
+        AISTracker(MMSI=mmsi, csvFileName=name, apiKey=API_KEYS[i % len(API_KEYS)])
+        for i, (mmsi, name) in enumerate(vessels)
+    ]
+
+    async def main():
+        tasks = [asyncio.create_task(tracker.connect_ais_stream()) for tracker in trackers]
+        await asyncio.gather(*tasks)
+
+    asyncio.run(main())
