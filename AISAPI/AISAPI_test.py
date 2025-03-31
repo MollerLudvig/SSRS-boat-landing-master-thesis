@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 env_path = os.path.join("env", ".env")
 load_dotenv(env_path)
 
-class ShipTracker:
+class AISTracker:
     def __init__(self, MMSI="265509950", csvFileName="AIS_data"):
         self.APIKey = os.getenv("AIS_API_KEY", "YOUR_DEFAULT_API_KEY") 
         self.MMSI = MMSI
@@ -53,15 +53,15 @@ class ShipTracker:
                             # Check if the message is for the correct MMSI
                             self._manage_time(ais_message['Timestamp'])
 
-                            ship.id = ais_message['UserID']
-                            ship.lat = ais_message['Latitude']
-                            ship.long = ais_message['Longitude']
-                            ship.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
-                            ship.yaw = ais_message['TrueHeading']
+                            AIS.id = ais_message['UserID']
+                            AIS.lat = ais_message['Latitude']
+                            AIS.long = ais_message['Longitude']
+                            AIS.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
+                            AIS.yaw = ais_message['TrueHeading']
 
                             # Do something with the data
-                            self.print_ship_data()
-                            self.save_ship_data_csv()
+                            self.print_AIS_data()
+                            self.save_AIS_data_csv()
 
 
             except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK) as e:
@@ -71,7 +71,7 @@ class ShipTracker:
                 print(f"Unexpected error: {e}. Reconnecting in 5 seconds...")
                 await asyncio.sleep(5)
 
-    def save_ship_data_csv(self):
+    def save_AIS_data_csv(self):
         directory = "data"
         os.makedirs(directory, exist_ok=True)
         base_filename = os.path.join(directory, self.csvFileName)
@@ -93,11 +93,11 @@ class ShipTracker:
 
 
 
-    def print_ship_data(self):
+    def print_AIS_data(self):
         """
-        Print the ship data in a readable format.
+        Print the AIS data in a readable format.
         """
-        print("\nShip data:")
+        print("\nAIS data:")
         print(f'Time: {self.timestamp}\n' +
               f'Time unix: {self.timestampUnix}\n' +
               f'Time status: {self.timestatus}\n' +
@@ -107,22 +107,22 @@ class ShipTracker:
               f'Speed: {self.sog}\n' +
               f'Heading: {self.yaw}\n')
 
-    def print_ship_data_dict(self):
+    def print_AIS_data_dict(self):
         """
-        Print the ship data as a dictionary.
+        Print the AIS data as a dictionary.
         """
-        ship_data = self.get_ship_data()
-        print(ship_data)
+        AIS_data = self.get_AIS_data()
+        print(AIS_data)
 
 
 
     """
-    Getters for ship data
+    Getters for AIS data
     """
 
-    def get_ship_data(self):
+    def get_AIS_data(self):
         """
-        Returns the ship data as a dictionary.
+        Returns the AIS data as a dictionary.
         """
         return {
             "id": self.id,
@@ -135,37 +135,37 @@ class ShipTracker:
             "timestatus": self.timestatus
         }
     
-    def get_ship_id(self):
+    def get_AIS_id(self):
         return self.id
     
-    def get_ship_lat(self):
+    def get_AIS_lat(self):
         return self.lat
     
-    def get_ship_long(self):
+    def get_AIS_long(self):
         return self.long
     
-    def get_ship_sog(self):
+    def get_AIS_sog(self):
         return self.sog
     
-    def get_ship_yaw(self):
+    def get_AIS_yaw(self):
         return self.yaw
     
-    def get_ship_timestamp(self):
+    def get_AIS_timestamp(self):
         return self.timestamp
     
-    def get_ship_timestamp_unix(self):
+    def get_AIS_timestamp_unix(self):
         return self.timestampUnix
     
-    def get_ship_timestatus(self):
+    def get_AIS_timestatus(self):
         return self.timestatus
     
-    def get_ship_timezone(self):
+    def get_AIS_timezone(self):
         return self.timezone
     
-    def get_ship_APIKey(self):
+    def get_AIS_APIKey(self):
         return self.APIKey
     
-    def get_ship_MMSI(self):
+    def get_AIS_MMSI(self):
         return self.MMSI
 
                     
@@ -204,5 +204,5 @@ class ShipTracker:
                     self.timestatus = "Unknown timestamp value"
 
 if __name__ == "__main__":
-    ship = ShipTracker()
-    asyncio.run(ship.connect_ais_stream())
+    AIS = AISTracker()
+    asyncio.run(AIS.connect_ais_stream())
