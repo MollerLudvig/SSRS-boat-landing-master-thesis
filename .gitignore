@@ -30,5 +30,8 @@ req.txt
 *.swp
 *.swo
 
+# Ignore dat files is AISAPI
+AISAPI/data/
+
 # Ignore unnecessary directories
 #dumbfuckdegenerate/
