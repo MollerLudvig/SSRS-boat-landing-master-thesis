@@ -6,10 +6,15 @@ import csv
 import os
 from datetime import datetime, timezone, timedelta
 import pytz
+from dotenv import load_dotenv
+
+# Load api key from env/.env file
+env_path = os.path.join("env", ".env")
+load_dotenv(env_path)
 
 class ShipTracker:
-    def __init__(self,APIKey ="1f2822724fc8865de6b262f69152cc31fdd2acc7",  MMSI="265509950", csvFileName="ship_data"):
-        self.APIKey = APIKey
+    def __init__(self, MMSI="265509950", csvFileName="AIS_data"):
+        self.APIKey = os.getenv("AIS_API_KEY", "YOUR_DEFAULT_API_KEY") 
         self.MMSI = MMSI
         self.csvFileName = csvFileName
         self.id = None
