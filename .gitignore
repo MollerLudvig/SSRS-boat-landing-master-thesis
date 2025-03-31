@@ -30,8 +30,8 @@ req.txt
 *.swp
 *.swo
 
-# Ignore dat files is AISAPI
-AISAPI/data/
+# Ignore all CSV files
+**.csv
 
 # Ignore environment files
 .env
