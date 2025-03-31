@@ -54,11 +54,11 @@ class AISTracker:
                             # Check if the message is for the correct MMSI
                             self._manage_time(ais_message['Timestamp'])
 
-                            AIS.id = ais_message['UserID']
-                            AIS.lat = ais_message['Latitude']
-                            AIS.long = ais_message['Longitude']
-                            AIS.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
-                            AIS.yaw = ais_message['TrueHeading']
+                            self.id = ais_message['UserID']
+                            self.lat = ais_message['Latitude']
+                            self.long = ais_message['Longitude']
+                            self.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
+                            self.yaw = ais_message['TrueHeading']
                             self.rateOfTurn = ais_message.get('RateOfTurn')
 
                             # Do something with the data
