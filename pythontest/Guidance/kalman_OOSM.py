@@ -9,7 +9,7 @@ class KalmanFilterGPS:
         self.x = np.array([[initial_lat], [initial_lon], [0], [0]])  # Initial state
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
-        self.last_time = timestamp
+        self.last_time = timestamp if timestamp else time.time()
         self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
 
         # Measurement matrices
