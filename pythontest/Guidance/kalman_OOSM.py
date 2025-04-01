@@ -49,7 +49,8 @@ class KalmanFilterGPS:
             [0, 0, 0, 0, 1]
         ])
 
-        # Dynamic process noise covariance
+        # Dynamic process noise covariance that scales with velocity
+        v_scaler = 0.1
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
@@ -59,7 +60,7 @@ class KalmanFilterGPS:
             [dt3, dt3, dt2, dt, 0],
             [dt2 / 2, dt2 / 2, dt, 1, 0],
             [0, 0, 0, 0, 1]
-        ]) * (1 + np.abs(v) / 10)
+        ]) * (1 + np.abs(v) * v_scaler)
 
         self.P = F @ self.P @ F.T + Q
 
