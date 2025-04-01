@@ -4,18 +4,18 @@ from collections import deque
 from geopy.distance import geodesic
 
 class KalmanFilterGPS:
-    def __init__(self, initial_lat=59.931209, initial_lon=12.520935, process_noise_variance=0.001, buffer_size=50, timestamp = time.time()):
-        self.n = 4  # State: [lat, lon, speed, yaw]
-        self.x = np.array([[initial_lat], [initial_lon], [0], [0]])  # Initial state
+    def __init__(self, initial_lat=59.931209, initial_lon=12.520935, process_noise_variance=0.001, buffer_size=50, timestamp=None):
+        self.n = 5  # State: [lat, lon, speed, acceleration, yaw]
+        self.x = np.array([[initial_lat], [initial_lon], [0], [0], [0]])  # Initial state
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
         self.last_time = timestamp if timestamp else time.time()
         self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0],
-                                  [0, 1, 0, 0]])
-        self.H_AIS = np.eye(4)
+        self.H_camera = np.array([[1, 0, 0, 0, 0],
+                                  [0, 1, 0, 0, 0]])
+        self.H_AIS = np.eye(self.n)
 
     def _update_dt(self):
         """Update dt based on the elapsed time since the last update."""
@@ -31,20 +31,22 @@ class KalmanFilterGPS:
         else:
             self.last_time += dt
 
-        lat, lon, v, psi = self.x.flatten()
-        
-        # Convert velocity (m/s) and heading to lat/lon displacement
-        displacement_m = v * dt
+        lat, lon, v, a, psi = self.x.flatten()
+
+        # Kinematic equations incorporating acceleration
+        v_new = v + a * dt
+        displacement_m = v * dt + 0.5 * a * dt**2
         new_lat, new_lon = self._move_in_latlon(lat, lon, displacement_m, psi)
 
-        self.x = np.array([[new_lat], [new_lon], [v], [psi]])
+        self.x = np.array([[new_lat], [new_lon], [v_new], [a], [psi]])
 
         # Linearized state transition matrix
         F = np.array([
-            [1, 0, np.cos(psi) * dt, -v * np.sin(psi) * dt],
-            [0, 1, np.sin(psi) * dt,  v * np.cos(psi) * dt],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
+            [1, 0, dt, 0.5 * dt**2, -v * np.sin(psi) * dt],
+            [0, 1, dt, 0.5 * dt**2,  v * np.cos(psi) * dt],
+            [0, 0, 1, dt, 0],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1]
         ])
 
         # Process noise covariance
@@ -118,7 +120,7 @@ class KalmanFilterGPS:
         Yaw expected in radians.
         """
         if R_AIS is None:
-            R_AIS = np.eye(4) * 0.01
+            R_AIS = np.eye(self.n) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
     def get_state(self):
