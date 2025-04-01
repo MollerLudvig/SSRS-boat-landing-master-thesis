@@ -4,12 +4,12 @@ from collections import deque
 from geopy.distance import geodesic
 
 class KalmanFilterGPS:
-    def __init__(self, initial_lat, initial_lon, process_noise_variance=0.001, buffer_size=50):
+    def __init__(self, initial_lat=59.931209, initial_lon=12.520935, process_noise_variance=0.001, buffer_size=50, timestamp = time.time()):
         self.n = 4  # State: [lat, lon, speed, yaw]
         self.x = np.array([[initial_lat], [initial_lon], [0], [0]])  # Initial state
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
-        self.last_time = time.time()
+        self.last_time = timestamp
         self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
 
         # Measurement matrices
@@ -28,6 +28,8 @@ class KalmanFilterGPS:
         """Predict the state using a time-varying step."""
         if dt is None:
             dt = self._update_dt()
+        else:
+            self.last_time += dt
 
         lat, lon, v, psi = self.x.flatten()
         
@@ -115,6 +117,24 @@ class KalmanFilterGPS:
         if R_AIS is None:
             R_AIS = np.eye(4) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
+
+    def get_state(self):
+        """Return the current state estimate."""
+        return self.x.flatten()
+        
+    def get_covariance(self):
+        """Return the current covariance estimate."""
+        return self.P
+
+    def set_state(self, state, timestamp=None):
+        """Set the state of the Kalman filter."""
+        if state.shape != (self.n, 1):
+            raise ValueError(f"State must be of shape ({self.n}, 1)")
+        self.x = state
+        if timestamp is not None:
+            self.last_time = timestamp
+        self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
+
 
     def _move_in_latlon(self, lat, lon, displacement_m, heading_rad):
         """Move from (lat, lon) a certain distance (m) in a given heading (rad)."""
