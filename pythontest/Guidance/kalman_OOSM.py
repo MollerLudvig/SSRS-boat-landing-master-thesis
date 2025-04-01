@@ -49,14 +49,17 @@ class KalmanFilterGPS:
             [0, 0, 0, 0, 1]
         ])
 
-        # Process noise covariance
+        # Dynamic process noise covariance
         dt2 = dt ** 2
+        dt3 = dt ** 3 / 2
+        dt4 = dt ** 4 / 4
         Q = self.process_noise_variance * np.array([
-            [dt2, 0, 0, 0],
-            [0, dt2, 0, 0],
-            [0, 0, dt2, 0],
-            [0, 0, 0, dt2]
-        ])
+            [dt4, 0, dt3, dt2 / 2, 0],
+            [0, dt4, dt3, dt2 / 2, 0],
+            [dt3, dt3, dt2, dt, 0],
+            [dt2 / 2, dt2 / 2, dt, 1, 0],
+            [0, 0, 0, 0, 1]
+        ]) * (1 + np.abs(v) / 10)
 
         self.P = F @ self.P @ F.T + Q
 
@@ -95,18 +98,13 @@ class KalmanFilterGPS:
         t_past, x_past, P_past = past_state
         self.x, self.P = x_past, P_past  # Roll back
 
-        # Compute dt from past time to measurement time
         dt_to_meas = timestamp - t_past
+        self.predict(dt_to_meas)  # Predict to measurement time
 
-        # Predict from past state to measurement time
-        self.predict(dt_to_meas)
+        self.update(z, H, R, timestamp)  # Apply measurement update
 
-        # Apply measurement update
-        self.update(z, H, R, timestamp)
-
-        # Re-propagate forward to the present
         dt_to_present = self.last_time - timestamp
-        self.predict(dt_to_present)
+        self.predict(dt_to_present)  # Re-propagate forward
 
     def update_camera(self, z, timestamp, R_camera=None):
         """Update with a camera measurement (global coordinates [lat, lon])."""
@@ -115,10 +113,7 @@ class KalmanFilterGPS:
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
-        """
-        Update with AIS measurement (global [lat, lon, speed, yaw]).
-        Yaw expected in radians.
-        """
+        """Update with AIS measurement (global [lat, lon, speed, acceleration, yaw])."""
         if R_AIS is None:
             R_AIS = np.eye(self.n) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
@@ -139,7 +134,6 @@ class KalmanFilterGPS:
         if timestamp is not None:
             self.last_time = timestamp
         self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
-
 
     def _move_in_latlon(self, lat, lon, displacement_m, heading_rad):
         """Move from (lat, lon) a certain distance (m) in a given heading (rad)."""
