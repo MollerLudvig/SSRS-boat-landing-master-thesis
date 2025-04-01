@@ -113,7 +113,10 @@ class KalmanFilterGPS:
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
-        """Update with AIS measurement (global [lat, lon, speed, yaw])."""
+        """
+        Update with AIS measurement (global [lat, lon, speed, yaw]).
+        Yaw expected in radians.
+        """
         if R_AIS is None:
             R_AIS = np.eye(4) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
