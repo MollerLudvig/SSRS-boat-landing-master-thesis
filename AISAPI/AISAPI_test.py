@@ -142,40 +142,6 @@ class AISTracker:
             "timestamp": self.timestamp,
             "timestatus": self.timestatus
         }
-    
-    def get_AIS_id(self):
-        return self.id
-    
-    def get_AIS_lat(self):
-        return self.lat
-    
-    def get_AIS_long(self):
-        return self.long
-    
-    def get_AIS_sog(self):
-        return self.sog
-    
-    def get_AIS_yaw(self):
-        return self.yaw
-    
-    def get_AIS_timestamp(self):
-        return self.timestamp
-    
-    def get_AIS_timestamp_unix(self):
-        return self.timestampUnix
-    
-    def get_AIS_timestatus(self):
-        return self.timestatus
-    
-    def get_AIS_timezone(self):
-        return self.timezone
-    
-    def get_AIS_APIKey(self):
-        return self.APIKey
-    
-    def get_AIS_MMSI(self):
-        return self.MMSI
-
                     
 
     def _manage_time(self, timestamp):
