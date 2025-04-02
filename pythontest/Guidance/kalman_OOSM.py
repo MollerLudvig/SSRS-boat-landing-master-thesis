@@ -119,23 +119,6 @@ class KalmanFilterGPS:
             R_AIS = np.eye(self.n) * 0.01
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
-    def get_state(self):
-        """Return the current state estimate."""
-        return self.x.flatten()
-        
-    def get_covariance(self):
-        """Return the current covariance estimate."""
-        return self.P
-
-    def set_state(self, state, timestamp=None):
-        """Set the state of the Kalman filter."""
-        if state.shape != (self.n, 1):
-            raise ValueError(f"State must be of shape ({self.n}, 1)")
-        self.x = state
-        if timestamp is not None:
-            self.last_time = timestamp
-        self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
-
     def _move_in_latlon(self, lat, lon, displacement_m, heading_rad):
         """Move from (lat, lon) a certain distance (m) in a given heading (rad)."""
         new_point = geodesic(meters=displacement_m).destination((lat, lon), np.degrees(heading_rad))
