@@ -36,8 +36,9 @@ req.txt
 **.tlog
 **.tlog.raw
 
-simulation/
-*.TXT
+# simulation/
+# .txt
+
 
 MissionHandler/
 *arm
