@@ -30,5 +30,20 @@ req.txt
 *.swp
 *.swo
 
+**.BIN
+**.bin
+**.parm
+**.tlog
+**.tlog.raw
+
+simulation/
+*.TXT
+
+MissionHandler/
+*arm
+*mode
+*servo
+*takeoff
+
 # Ignore unnecessary directories
 #dumbfuckdegenerate/
