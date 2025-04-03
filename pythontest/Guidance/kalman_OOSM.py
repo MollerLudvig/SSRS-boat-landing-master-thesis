@@ -33,6 +33,8 @@ class KalmanFilterXY:
             dt = timestamp - past_timestamp
         else:
             dt = timestamp - self.last_time
+            if dt <= 0.001:  # Ignore very small time steps
+                return
             self.last_time = timestamp
 
         # Update the state transition matrix F
