@@ -6,7 +6,7 @@ import bisect
 class KalmanFilterXY:
     def __init__(self, v = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
-        self.x = np.array([[0], [0], [v], [0], [psi]])  # State: [x, y, speed, acceleration, yaw]
+        self.x = np.array([[0], [0], [v], [psi], [0]])  # State: [x, y, speed, yaw, yaw rate]
         self.n = self.x.shape[0]
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
@@ -22,7 +22,7 @@ class KalmanFilterXY:
         self.H_AIS = np.array([[1, 0, 0, 0, 0], # x
                                [0, 1, 0, 0, 0], # y
                                [0, 0, 1, 0, 0], # speed
-                               [0, 0, 0, 0, 1]])# yaw
+                               [0, 0, 0, 1, 0]])# yaw
         
         # State transition matrix (updated in predict)
         self.F = np.eye(self.n)
@@ -39,10 +39,11 @@ class KalmanFilterXY:
 
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, dt, 0.5 * dt**2, 0],
-            [0, 1, dt, 0.5 * dt**2, 0],
-            [0, 0, 1, dt, 0],
+            [1, 0, dt*np.cos(self.x[2]), 0, 0],
+            [0, 1, dt*np.sin(self.x[2]), 0, 0],
+            [0, 0, 1, 0, 0],
             [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, dt],
             [0, 0, 0, 0, 1]
         ])
 
@@ -55,11 +56,12 @@ class KalmanFilterXY:
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
         Q = self.process_noise_variance * np.array([
-            [dt4, 0, dt3, dt2 / 2, 0],
-            [0, dt4, dt3, dt2 / 2, 0],
-            [dt3, dt3, dt2, dt, 0],
+            [dt4, 0, dt3, dt2 / 2, 0, 0],
+            [0, dt4, dt3, dt2 / 2, 0, 0],
+            [dt3, dt3, dt2, dt, 0, 0],
             [dt2 / 2, dt2 / 2, dt, 1, 0],
-            [0, 0, 0, 0, 1]
+            [0, 0, 0, 0, dt3, dt2],
+            [0, 0, 0, 0, dt2, dt]
         ]) #* (1 + np.abs(v) * v_scaler)
 
         # Update state covariance
