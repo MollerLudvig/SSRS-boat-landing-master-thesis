@@ -1,56 +1,54 @@
 import numpy as np
 import time
 from collections import deque
-from geopy.distance import geodesic
+import bisect
 
-class KalmanFilterGPS:
-    def __init__(self, initial_lat=59.931209, initial_lon=12.520935, process_noise_variance=0.001, buffer_size=50, timestamp=None):
-        self.n = 5  # State: [lat, lon, speed, acceleration, yaw]
-        self.x = np.array([[initial_lat], [initial_lon], [0], [0], [0]])  # Initial state
+class KalmanFilterXY:
+    def __init__(self, v = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+
+        self.x = np.array([[0], [0], [v], [0], [psi]])  # State: [x, y, speed, acceleration, yaw]
+        self.n = self.x.shape[0]
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
-        self.last_time = timestamp if timestamp else time.time()
-        self.state_buffer = deque(maxlen=buffer_size)   # Stores (timestamp, state, covariance) tuples
+        self.last_time = timestamp
+        self.state_buffer = deque(maxlen=state_buffer_size)   # Stores (timestamp, state, covariance) tuples
+        self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))  # Initialize buffer with the initial state
+        self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
         self.H_camera = np.array([[1, 0, 0, 0, 0],
                                   [0, 1, 0, 0, 0]])
-        self.H_AIS = np.eye(self.n)
+        
+        self.H_AIS = np.array([[1, 0, 0, 0, 0], # x
+                               [0, 1, 0, 0, 0], # y
+                               [0, 0, 1, 0, 0], # speed
+                               [0, 0, 0, 0, 1]])# yaw
+        
+        # State transition matrix (updated in predict)
+        self.F = np.eye(self.n)
 
-    def _update_dt(self):
-        """Update dt based on the elapsed time since the last update."""
-        current_time = time.time()
-        dt = current_time - self.last_time
-        self.last_time = current_time
-        return dt
-
-    def predict(self, dt=None):
+    def predict(self, timestamp, past_timestamp=None):
         """Predict the state using a time-varying step."""
-        if dt is None:
-            dt = self._update_dt()
+        if past_timestamp is not None:
+            dt = timestamp - past_timestamp
         else:
-            self.last_time += dt
+            dt = timestamp - self.last_time
+            self.last_time = timestamp
 
-        lat, lon, v, a, psi = self.x.flatten()
-
-        # Kinematic equations incorporating acceleration
-        v_new = v + a * dt
-        displacement_m = v * dt + 0.5 * a * dt**2
-        new_lat, new_lon = self._move_in_latlon(lat, lon, displacement_m, psi)
-
-        self.x = np.array([[new_lat], [new_lon], [v_new], [a], [psi]])
-
-        # Linearized state transition matrix
-        F = np.array([
-            [1, 0, dt, 0.5 * dt**2, -v * np.sin(psi) * dt],
-            [0, 1, dt, 0.5 * dt**2,  v * np.cos(psi) * dt],
+        # Update the state transition matrix F
+        self.F = np.array([
+            [1, 0, dt, 0.5 * dt**2, 0],
+            [0, 1, dt, 0.5 * dt**2, 0],
             [0, 0, 1, dt, 0],
             [0, 0, 0, 1, 0],
             [0, 0, 0, 0, 1]
         ])
 
+        # Predict state
+        self.x = self.F @ self.x
+    
         # Dynamic process noise covariance that scales with velocity
-        v_scaler = 0.1
+        #v_scaler = 0.0
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
@@ -60,9 +58,10 @@ class KalmanFilterGPS:
             [dt3, dt3, dt2, dt, 0],
             [dt2 / 2, dt2 / 2, dt, 1, 0],
             [0, 0, 0, 0, 1]
-        ]) * (1 + np.abs(v) * v_scaler)
+        ]) #* (1 + np.abs(v) * v_scaler)
 
-        self.P = F @ self.P @ F.T + Q
+        # Update state covariance
+        self.P = self.F @ self.P @ self.F.T + Q
 
         # Store state in buffer
         self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
@@ -70,88 +69,78 @@ class KalmanFilterGPS:
     def update(self, z, H, R, timestamp):
         """Update the filter with a new measurement at a given timestamp."""
         if timestamp < self.last_time:  # Out-of-sequence measurement detected
-            self.handle_OOSM(z, H, R, timestamp)
+            self._handle_OOSM(z, H, R, timestamp)
             return
 
         y = z - H @ self.x  # Innovation
-        S = H @ self.P @ H.T + R  # Innovation covariance
+        S = H @ (self.P @ H.T) + R  # Innovation covariance
         K = self.P @ H.T @ np.linalg.inv(S)  # Kalman Gain
-        self.x = self.x + K @ y
-        I = np.eye(self.n)
-        self.P = (I - K @ H) @ self.P
+        self.x = self.x + K @ y # Update state
+        I = np.eye(self.n) # Identity matrix
+        self.P = (I - K @ H) @ self.P @ (I - K @ H).T + K @ R @ K.T  # Joseph form
 
-    def handle_OOSM(self, z, H, R, timestamp):
+    def _handle_OOSM(self, z, H, R, timestamp):
         """
         Handles out-of-sequence measurements by rolling back the state,
         applying the correction, and re-propagating to the current time.
         """
-        # Find the closest past state before the timestamp
+        # Step 1: Find the latest state before `timestamp`
         past_state = None
         for t, x, P in reversed(self.state_buffer):
             if t <= timestamp:
                 past_state = (t, x.copy(), P.copy())
                 break
 
+        # If no past state is found, use the oldest available state
         if past_state is None:
-            print("Warning: No valid past state found for OOSM!")
-            return
+            print("Warning: No valid past state found for OOSM! Using the oldest available state.")
+            if len(self.state_buffer) > 0:
+                past_state = self.state_buffer[0]  # Use oldest state
+            else:
+                print("Error: No states available in buffer. Ignoring OOSM.")
+                return
 
-        t_past, x_past, P_past = past_state
-        self.x, self.P = x_past, P_past  # Roll back
+        # Roll back to past state
+        t_past, self.x, self.P = past_state
 
-        dt_to_meas = timestamp - t_past
-        self.predict(dt_to_meas)  # Predict to measurement time
 
-        self.update(z, H, R, timestamp)  # Apply measurement update
+        # Step 2: Collect all later measurements (including the new OOSM)
+        relevant_measurements = []
+        for t, mz, mH, mR in reversed(self.measurement_buffer):
+            if t < timestamp:
+                break
+            relevant_measurements.append((t, mz.copy(), mH.copy(), mR.copy()))
+        relevant_measurements.append((timestamp, z.copy(), H.copy(), R.copy()))
 
-        dt_to_present = self.last_time - timestamp
-        self.predict(dt_to_present)  # Re-propagate forward
+
+        # Step 3: Apply measurements in chronological order
+        for t, mz, mH, mR in reversed(relevant_measurements):
+            self.predict(t, t_past)
+            self.update(mz, mH, mR, t)
+            t_past = t
+
+        # Step 4: Predict to the current time
+        self.predict(self.last_time, t_past)
+
+    def _insert_measurement(self, z, H, R, timestamp):
+        """Insert measurement into buffer while maintaining chronological order."""
+        new_entry = (timestamp, z.copy(), H.copy(), R.copy())
+
+        # Convert deque to list, insert in sorted order, and convert back to deque
+        temp_list = list(self.measurement_buffer)
+        bisect.insort(temp_list, new_entry, key=lambda x: x[0])
+        self.measurement_buffer = deque(temp_list, maxlen=self.measurement_buffer.maxlen)
 
     def update_camera(self, z, timestamp, R_camera=None):
-        """Update with a camera measurement (global coordinates [lat, lon])."""
+        """Update with a camera measurement ([x, y])."""
         if R_camera is None:
             R_camera = np.eye(2) * 0.01
+        self._insert_measurement(z, self.H_camera, R_camera, timestamp)
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
-        """Update with AIS measurement (global [lat, lon, speed, acceleration, yaw])."""
+        """Update with AIS measurement ([x, y, speed, yaw])."""
         if R_AIS is None:
-            R_AIS = np.eye(self.n) * 0.01
+            R_AIS = np.eye(4) * 0.01
+        self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
-
-    def _move_in_latlon(self, lat, lon, displacement_m, heading_rad):
-        """Move from (lat, lon) a certain distance (m) in a given heading (rad)."""
-        new_point = geodesic(meters=displacement_m).destination((lat, lon), np.degrees(heading_rad))
-        return new_point.latitude, new_point.longitude
-
-
-# Example usage:
-if __name__ == '__main__':
-    kf = KalmanFilterGPS(57.672, 11.841)  # Initialize with ship's starting coordinates
-    kf.last_time = time.time()
-
-    import random
-
-    for _ in range(20):
-        current_time = time.time()
-        kf.predict()
-        print("Predicted state:", kf.x.T)
-
-        if random.random() < 0.3:
-            cam_meas = kf.x[0:2] + np.random.randn(2, 1) * 0.0001
-            kf.update_camera(cam_meas, current_time)
-            print("Camera update:", kf.x.T)
-
-        if random.random() < 0.2:
-            delay = random.uniform(0, 1.5)  # AIS delay simulation
-            ais_time = current_time - delay
-            speed = kf.x[2, 0] + np.random.randn() * 0.1
-            yaw = kf.x[3, 0] + np.random.randn() * 0.01
-            ais_meas = np.array([[kf.x[0, 0] + np.random.randn() * 0.0001],
-                                 [kf.x[1, 0] + np.random.randn() * 0.0001],
-                                 [speed],
-                                 [yaw]])
-            kf.update_AIS(ais_meas, ais_time)
-            print("AIS update:", kf.x.T)
-
-        time.sleep(random.uniform(0.05, 0.2))
