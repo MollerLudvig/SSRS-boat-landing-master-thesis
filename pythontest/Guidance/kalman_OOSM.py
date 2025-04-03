@@ -4,9 +4,8 @@ from collections import deque
 import bisect
 
 class KalmanFilterXY:
-    def __init__(self, v = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
-
-        self.x = np.array([[0], [0], [v], [0], [psi]])  # State: [x, y, speed, acceleration, yaw]
+    def __init__(self, vx=0, vy=0, psi=0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+        self.x = np.array([[0], [0], [vx], [vy], [0], [0], [psi], [0]])  # State: [x, y, xdot, ydot, xdotdot, ydotdot, yaw, yawdot]
         self.n = self.x.shape[0]
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
@@ -16,15 +15,16 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0, 0],
-                                  [0, 1, 0, 0, 0]])
+        self.H_camera = np.array([[1, 0, 0, 0, 0, 0, 0, 0],  # x
+                                [0, 1, 0, 0, 0, 0, 0, 0]]) # y
         
-        self.H_AIS = np.array([[1, 0, 0, 0, 0], # x
-                               [0, 1, 0, 0, 0], # y
-                               [0, 0, 1, 0, 0], # speed
-                               [0, 0, 0, 0, 1]])# yaw
-        
-        # State transition matrix (updated in predict)
+        self.H_AIS = np.array([[1, 0, 0, 0, 0, 0, 0, 0],  # x
+                                [0, 1, 0, 0, 0, 0, 0, 0],  # y
+                                [0, 0, 1, 0, 0, 0, 0, 0],  # speed x
+                                [0, 0, 0, 1, 0, 0, 0, 0],  # speed y
+                                [0, 0, 0, 0, 0, 0, 1, 0]]) # yaw
+
+        # State transition matrix (to be updated in predict)
         self.F = np.eye(self.n)
 
     def predict(self, timestamp, past_timestamp=None):
@@ -39,28 +39,34 @@ class KalmanFilterXY:
 
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, dt, 0.5 * dt**2, 0],
-            [0, 1, dt, 0.5 * dt**2, 0],
-            [0, 0, 1, dt, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 1]
+            [1, 0, dt, 0, 0.5 * dt**2, 0, 0, 0],  # x
+            [0, 1, 0, dt, 0, 0.5 * dt**2, 0, 0],  # y
+            [0, 0, 1, 0, dt, 0, 0, 0],  # xdot
+            [0, 0, 0, 1, 0, dt, 0, 0],  # ydot
+            [0, 0, 0, 0, 1, 0, 0, 0],  # xdotdot
+            [0, 0, 0, 0, 0, 1, 0, 0],  # ydotdot
+            [0, 0, 0, 0, 0, 0, 1, dt],  # yaw
+            [0, 0, 0, 0, 0, 0, 0, 1]   # yawdot
         ])
+
 
         # Predict state
         self.x = self.F @ self.x
-    
-        # Dynamic process noise covariance that scales with velocity
-        #v_scaler = 0.0
+
+        # Process noise covariance matrix Q
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
         Q = self.process_noise_variance * np.array([
-            [dt4, 0, dt3, dt2 / 2, 0],
-            [0, dt4, dt3, dt2 / 2, 0],
-            [dt3, dt3, dt2, dt, 0],
-            [dt2 / 2, dt2 / 2, dt, 1, 0],
-            [0, 0, 0, 0, 1]
-        ]) #* (1 + np.abs(v) * v_scaler)
+            [dt4, 0, dt3, 0, dt2 / 2, 0, 0, 0],
+            [0, dt4, 0, dt3, 0, dt2 / 2, 0, 0],
+            [dt3, 0, dt2, 0, dt, 0, 0, 0],
+            [0, dt3, 0, dt2, 0, dt, 0, 0],
+            [dt2 / 2, 0, dt, 0, 1, 0, 0, 0],
+            [0, dt2 / 2, 0, dt, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, dt3, dt2],
+            [0, 0, 0, 0, 0, 0, dt2, dt]
+        ])
 
         # Update state covariance
         self.P = self.F @ self.P @ self.F.T + Q
