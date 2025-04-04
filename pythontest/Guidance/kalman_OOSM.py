@@ -4,9 +4,9 @@ from collections import deque
 import bisect
 
 class KalmanFilterXY:
-    def __init__(self, v = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+    def __init__(self, vx = 0, vy = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
-        self.x = np.array([[0], [0], [v], [psi], [0]])  # State: [x, y, speed, yaw, yaw rate]
+        self.x = np.array([[0], [0], [vx], [vy], [psi]])  # State: [x, y, xdot, ydot, yaw]
         self.n = self.x.shape[0]
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
@@ -16,19 +16,23 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0, 0],
-                                  [0, 1, 0, 0, 0]])
+        self.H_camera = np.array([[1, 0, 0, 0, 0, 0],
+                                  [0, 1, 0, 0, 0, 0]])
         
         self.H_AIS = np.array([[1, 0, 0, 0, 0], # x
                                [0, 1, 0, 0, 0], # y
-                               [0, 0, 1, 0, 0], # speed
-                               [0, 0, 0, 1, 0]])# yaw
+                               [0, 0, 1, 0, 0], # xdot
+                               [0, 0, 0, 1, 0], # ydot
+                               [0, 0, 0, 0, 1],])# yaw
+        
         
         # State transition matrix (updated in predict)
         self.F = np.eye(self.n)
 
     def predict(self, timestamp, past_timestamp=None):
         """Predict the state using a time-varying step."""
+        last_measurment = self.measurement_buffer[-1] if self.measurement_buffer else None
+        
         if past_timestamp is not None:
             dt = timestamp - past_timestamp
         else:
@@ -37,12 +41,13 @@ class KalmanFilterXY:
                 return
             self.last_time = timestamp
 
+        # print(f'dt: {dt}, timestamp: {timestamp}, past_timestamp: {past_timestamp}')
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, dt*np.sin(self.x[3,0])*self.x[2,0], 0, 0],
-            [0, 1, dt*np.cos(self.x[3,0])*self.x[2,0], 0, 0],
+            [1, 0, dt, 0, 0],
+            [0, 1, 0, dt, 0],
             [0, 0, 1, 0, 0],
-            [0, 0, 0, 1, dt],
+            [0, 0, 0, 1, 0],
             [0, 0, 0, 0, 1]
         ])
 
@@ -50,17 +55,24 @@ class KalmanFilterXY:
         self.x = self.F @ self.x
     
         # Dynamic process noise covariance that scales with velocity
-        #v_scaler = 0.0
+        v_scaler = 5
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
+        # Q = self.process_noise_variance * np.array([
+        #     [dt*100, 0,0, 0, 0,],
+        #     [0, dt*100, 0, 0, 0],
+        #     [0, 0, dt3, 0, 0],
+        #     [0, 0, 0, dt4, dt4],
+        #     [0, 0, 0, dt2, dt]
+        # ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
         Q = self.process_noise_variance * np.array([
-            [dt4, 0, dt3, 0, 0,],
-            [0, dt4, dt3, 0, 0],
-            [dt4, dt4, dt3, 0, 0],
-            [0, 0, 0, dt3, dt2],
-            [0, 0, 0, dt2, dt]
-        ]) #* (1 + np.abs(v) * v_scaler)
+            [10, 0, 100, 0, 0],
+            [0, 10, 0, 100, 0],
+            [0, 0, 100, 0, 0],
+            [0, 0, 0, 100, 0],
+            [0, 0, 0, 0, 100]
+        ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
 
         # Update state covariance
         self.P = self.F @ self.P @ self.F.T + Q
@@ -144,9 +156,10 @@ class KalmanFilterXY:
         """Update with AIS measurement ([x, y, speed, yaw])."""
         if R_AIS is None:
             # R_AIS = np.eye(4) * 0.01
-            R_AIS = np.array([[10, 0, 0, 0],
-                              [0, 10, 0, 0],
-                              [0, 0, 1, 0],
-                              [0, 0, 0, 10]])* 0.01
+            R_AIS = np.array([[10, 0, 0, 0, 0],
+                              [0, 10, 0, 0, 0],
+                              [0, 0, 1, 0, 0],
+                              [0, 0, 0, 1, 0],
+                              [0, 0, 0, 0, 1]]) * 1
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)

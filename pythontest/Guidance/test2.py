@@ -37,7 +37,7 @@ def xy_to_latlon(x, y, lat0, lon0):
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
-csv_file = "valo_3_short.csv"
+csv_file = "ylva_1.csv"
 df = pd.read_csv(csv_file)
 
 # Get initial reference position
@@ -51,27 +51,38 @@ df["x"], df["y"] = zip(*df.apply(lambda row: latlon_to_xy(row["Latitude"], row["
 dfPlot = df.copy()
 
 
-kf = KalmanFilterXY(v = v0, psi = psi0,timestamp = time0,  process_noise_variance=0.001)
+kf = KalmanFilterXY(vx = np.sin(psi0)*v0,vy = np.cos(psi0)*v0 , psi = psi0,timestamp = time0,  process_noise_variance=0.00001)
 
-t = time0
+
 dt = 5  # Time step in seconds
+t = time0 + dt
 trajectory = []
 velocity = []
 while True:
     # Predict the state
-    kf.predict(t, past_timestamp=t-1)
+    kf.predict(t, past_timestamp=t-dt)
     
     if df.empty:
             break
 
     # Update with AIS measurement
     while t > df.iloc[0]["TimestampUnix"]:
-        kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [df.iloc[0]["Speed"]], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
+        x = df.iloc[0]["x"]
+        y = df.iloc[0]["y"]
+        yaw = np.radians(df.iloc[0]["Heading"])
+        vx = np.sin(yaw)*df.iloc[0]["Speed"]
+        vy = np.cos(yaw)*df.iloc[0]["Speed"]
+        # print(f'speed: {df.iloc[0]["Speed"]}, yaw: {yaw}, vx: {vx}, vy: {vy}')
+        z = np.array([[x], [y], [vx], [vy], [yaw]])
+        kf.update_AIS(z , df.iloc[0]["TimestampUnix"])
+        # kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [vx], [vy], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
+        # kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [np.sin(df.iloc[0]["Speed"])], [np.cos(np.radians(df.iloc[0]["Heading"]))*df.iloc[0]["Speed"]], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
         df.drop(index=df.index[0], axis=0, inplace=True)
         if df.empty:
             break
 
     trajectory.append((kf.x[0], kf.x[1]))
+    # print(f"vx: {kf.x[2]}, vy: {kf.x[3]}, yaw: {kf.x[4]}")
     velocity.append(kf.x[2,0])
     t += dt
 
