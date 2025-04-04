@@ -39,11 +39,10 @@ class KalmanFilterXY:
 
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, dt*np.cos(self.x[2]), 0, 0],
-            [0, 1, dt*np.sin(self.x[2]), 0, 0],
+            [1, 0, dt*np.cos(self.x[3])*self.x[2], 0, 0],
+            [0, 1, dt*np.sin(self.x[3])*self.x[2], 0, 0],
             [0, 0, 1, 0, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 0, dt],
+            [0, 0, 0, 1, dt],
             [0, 0, 0, 0, 1]
         ])
 
@@ -56,12 +55,11 @@ class KalmanFilterXY:
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
         Q = self.process_noise_variance * np.array([
-            [dt4, 0, dt3, dt2 / 2, 0, 0],
-            [0, dt4, dt3, dt2 / 2, 0, 0],
-            [dt3, dt3, dt2, dt, 0, 0],
-            [dt2 / 2, dt2 / 2, dt, 1, 0],
-            [0, 0, 0, 0, dt3, dt2],
-            [0, 0, 0, 0, dt2, dt]
+            [dt4, 0, dt3, 0, 0,],
+            [0, dt4, dt3, 0, 0],
+            [dt3, dt3, dt2, 0, 0],
+            [0, 0, 0, dt3, dt2],
+            [0, 0, 0, dt2, dt]
         ]) #* (1 + np.abs(v) * v_scaler)
 
         # Update state covariance
