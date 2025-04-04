@@ -1,58 +1,91 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from pyproj import Proj, Transformer
+from cartopy.io.img_tiles import OSM
 from kalman_OOSM import KalmanFilterXY
 
-# Load AIS CSV data
-csv_file = "pythontest/Guidance/valo_3.csv"  # Update with the actual file path
+
+# Initialize UTM projection (choose zone based on starting lat/lon)
+def get_utm_zone(lon):
+    return int((lon + 180) / 6) + 1
+
+def latlon_to_xy(lat, lon, lat0, lon0):
+    """Convert lat/lon to local UTM XY coordinates."""
+    utm_zone = get_utm_zone(lon0)
+    utm_proj = Proj(proj="utm", zone=utm_zone, ellps="WGS84", south=lat0 < 0)
+    x, y = utm_proj(lon, lat)
+    x0, y0 = utm_proj(lon0, lat0)
+    return x - x0, y - y0  # Relative XY
+
+def xy_to_latlon(x, y, lat0, lon0):
+    """Convert local XY back to lat/lon."""
+    utm_zone = get_utm_zone(lon0)
+    utm_proj = Proj(proj="utm", zone=utm_zone, ellps="WGS84", south=lat0 < 0)
+    lon, lat = utm_proj(x, y, inverse=True)
+    return lat, lon
+
+# Load AIS data
+# csv_file = "pythontest/Guidance/valo_3.csv"  
+csv_file = "valo_3.csv"
 df = pd.read_csv(csv_file)
 
-# Initialize Kalman filter with the first AIS data point
-initial_lat = df.iloc[0]["Latitude"]
-initial_lon = df.iloc[0]["Longitude"]
-kf = KalmanFilterXY(timestamp=df.iloc[0]["TimestampUnix"], v=df.iloc[0]["Speed"], psi=np.radians(df.iloc[0]["Heading"]))
+# Get initial reference position
+lat0, lon0, v0, psi0, time0 = df.iloc[0]["Latitude"], df.iloc[0]["Longitude"], df.iloc[0]["Speed"], np.radians(df.iloc[0]["Heading"]), df.iloc[0]["TimestampUnix"]
 
-# Extract timestamps
-timestamps = df["TimestampUnix"].to_numpy()
-start_time = timestamps[0]
-end_time = timestamps[-1]
+lastTime = df.iloc[-1]["TimestampUnix"]
 
-# Prediction and update loop
-predicted_trajectory = []
-measurement_index = 0
+# Convert lat/lon to local XY
+df["x"], df["y"] = zip(*df.apply(lambda row: latlon_to_xy(row["Latitude"], row["Longitude"], lat0, lon0), axis=1))
 
-current_time = start_time
-dt=5
-while current_time <= end_time:
-    kf.predict(dt)
+
+
+kf = KalmanFilterXY(v = v0, psi = psi0,timestamp = time0,  process_noise_variance=0.001)
+
+t = time0
+dt = 1  # Time step in seconds
+trajectory = []
+while True:
+    # Predict the state
+    kf.predict(t, past_timestamp=t-1)
     
-    # Check if we have a new measurement at this time
-    if measurement_index < len(timestamps) and timestamps[measurement_index] <= current_time:
-        row = df.iloc[measurement_index]
-        measurement = np.array([[row["Latitude"]], 
-                                [row["Longitude"]], 
-                                [row["Speed"]], 
-                                [0],  # Acceleration is unknown
-                                [np.radians(row["Heading"])]])
-        print(f"Processing measurement: {measurement.T} at timestamp: {timestamps[measurement_index]}")
-        kf.update_AIS(measurement, timestamps[measurement_index])
-        measurement_index += 1  # Move to next measurement
-    
-    # Store predicted state for plotting
-    predicted_trajectory.append((kf.x[0, 0], kf.x[1, 0]))
-    
-    current_time += dt  # Advance by 1 second
+    if df.empty:
+            break
 
-# Extract filtered trajectory
-lats, lons = zip(*predicted_trajectory)
+    # Update with AIS measurement
+    while t > df.iloc[0]["TimestampUnix"]:
+        kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [df.iloc[0]["Speed"]], [0], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
+        df.drop(index=df.index[0], axis=0, inplace=True)
+        if df.empty:
+            break
 
-# Plot the results
-plt.figure(figsize=(10, 6))
-plt.plot(df["Longitude"].to_numpy(), df["Latitude"].to_numpy(), 'ro-', markersize=3, label="Raw AIS Data")
-plt.plot(lons, lats, 'bo-', markersize=3, label="Kalman Filtered (1Hz Prediction)")
-plt.xlabel("Longitude")
-plt.ylabel("Latitude")
+    trajectory.append((kf.x[0], kf.x[1]))
+    t += dt
+
+
+# Use OpenStreetMap tile background
+osm_tiles = OSM()
+fig, ax = plt.subplots(figsize=(10, 6), subplot_kw={"projection": osm_tiles.crs})
+
+# Set map extent
+ax.set_extent([df["Longitude"].min(), df["Longitude"].max(),
+               df["Latitude"].min(), df["Latitude"].max()], crs=ccrs.PlateCarree())
+
+# Add OSM tiles (detailed coastline & islands)
+ax.add_image(osm_tiles, 10)  # Higher zoom level = more detail
+
+# Plot raw AIS data
+ax.plot(df["Longitude"], df["Latitude"], 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
+
+# Convert filtered XY back to lat/lon for plotting
+filtered_lats, filtered_lons = zip(*[xy_to_latlon(x, y, lat0, lon0) for x, y in zip(df["x"], df["y"])])
+
+# Plot Kalman Filtered trajectory
+ax.plot(filtered_lons, filtered_lats, 'bo-', markersize=3, transform=ccrs.PlateCarree(), label="Kalman Filtered Path")
+
 plt.legend()
-plt.title("AIS Ship Trajectory with 1Hz Kalman Filtering")
+plt.title("AIS Ship Trajectory with OSM Map Background")
 plt.grid()
 plt.show()
