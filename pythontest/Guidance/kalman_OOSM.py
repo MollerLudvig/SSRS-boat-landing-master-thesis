@@ -39,8 +39,8 @@ class KalmanFilterXY:
 
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, dt*np.cos(self.x[3])*self.x[2], 0, 0],
-            [0, 1, dt*np.sin(self.x[3])*self.x[2], 0, 0],
+            [1, 0, dt*np.sin(self.x[3,0])*self.x[2,0], 0, 0],
+            [0, 1, dt*np.cos(self.x[3,0])*self.x[2,0], 0, 0],
             [0, 0, 1, 0, 0],
             [0, 0, 0, 1, dt],
             [0, 0, 0, 0, 1]
