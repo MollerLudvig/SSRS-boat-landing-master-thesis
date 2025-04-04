@@ -56,7 +56,7 @@ while True:
 
     # Update with AIS measurement
     while t > df.iloc[0]["TimestampUnix"]:
-        kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [df.iloc[0]["Speed"]], [0], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
+        kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [df.iloc[0]["Speed"]], [np.radians(df.iloc[0]["Heading"])]]) , df.iloc[0]["TimestampUnix"])
         df.drop(index=df.index[0], axis=0, inplace=True)
         if df.empty:
             break
