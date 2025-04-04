@@ -57,7 +57,7 @@ class KalmanFilterXY:
         Q = self.process_noise_variance * np.array([
             [dt4, 0, dt3, 0, 0,],
             [0, dt4, dt3, 0, 0],
-            [dt3, dt3, dt2, 0, 0],
+            [dt4, dt4, dt3, 0, 0],
             [0, 0, 0, dt3, dt2],
             [0, 0, 0, dt2, dt]
         ]) #* (1 + np.abs(v) * v_scaler)
@@ -143,6 +143,10 @@ class KalmanFilterXY:
     def update_AIS(self, z, timestamp, R_AIS=None):
         """Update with AIS measurement ([x, y, speed, yaw])."""
         if R_AIS is None:
-            R_AIS = np.eye(4) * 0.01
+            # R_AIS = np.eye(4) * 0.01
+            R_AIS = np.array([[10, 0, 0, 0],
+                              [0, 10, 0, 0],
+                              [0, 0, 1, 0],
+                              [0, 0, 0, 10]])* 0.01
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
