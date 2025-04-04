@@ -29,6 +29,8 @@ class KalmanFilterXY:
 
     def predict(self, timestamp, past_timestamp=None):
         """Predict the state using a time-varying step."""
+        last_measurment = self.measurement_buffer[-1] if self.measurement_buffer else None
+        
         if past_timestamp is not None:
             dt = timestamp - past_timestamp
         else:
@@ -39,10 +41,10 @@ class KalmanFilterXY:
 
         # Update the state transition matrix F
         self.F = np.array([
-            [1, 0, (dt*np.sin(self.x[3,0])*self.x[2,0]), 0, 0],
-            [0, 1, (dt*np.cos(self.x[3,0])*self.x[2,0]), 0, 0],
+            [1, 0, dt*np.sin(self.x[3,0])*self.x[2,0], 0, 0],
+            [0, 1, dt*np.cos(self.x[3,0])*self.x[2,0], 0, 0],
             [0, 0, 1, 0, 0],
-            [0, 0, 0, 1, dt],
+            [0, 0, 0, 1, dt/self.x[2,0]],
             [0, 0, 0, 0, 1]
         ])
 
@@ -50,17 +52,24 @@ class KalmanFilterXY:
         self.x = self.F @ self.x
     
         # Dynamic process noise covariance that scales with velocity
-        v_scaler = 1.0
+        v_scaler = 5
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
+        # Q = self.process_noise_variance * np.array([
+        #     [dt*100, 0,0, 0, 0,],
+        #     [0, dt*100, 0, 0, 0],
+        #     [0, 0, dt3, 0, 0],
+        #     [0, 0, 0, dt4, dt4],
+        #     [0, 0, 0, dt2, dt]
+        # ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
         Q = self.process_noise_variance * np.array([
-            [dt, 0, dt3, 0, 0,],
-            [0, dt, dt3, 0, 0],
-            [dt3**3, dt3**3, dt2**2, 0, 0],
-            [0, 0, 0, dt4, dt4],
-            [0, 0, 0, dt2, dt]
-        ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
+            [10, 0, 0, 0, 0],
+            [0, 10, 0, 0, 0],
+            [0, 0, 100, 0, 0],
+            [0, 0, 0, 100, 0],
+            [0, 0, 0, 0, 1000]
+        ]) * (0.001 + np.abs(self.x[2,0]) * v_scaler)
 
         # Update state covariance
         self.P = self.F @ self.P @ self.F.T + Q
@@ -146,7 +155,7 @@ class KalmanFilterXY:
             # R_AIS = np.eye(4) * 0.01
             R_AIS = np.array([[1, 0, 0, 0],
                               [0, 1, 0, 0],
-                              [0, 0, 1, 0],
-                              [0, 0, 0, 0]]) * 0.01
+                              [0, 0, 5, 0],
+                              [0, 0, 0, 10]]) * 0.01
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)

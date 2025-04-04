@@ -75,14 +75,20 @@ while True:
     velocity.append(kf.x[2,0])
     t += dt
 
+# Convert filtered XY back to lat/lon for plotting
+filtered_lats, filtered_lons = zip(*[xy_to_latlon(x[0], x[1], lat0, lon0) for x in trajectory])
+
+print (f"Filtered trajectory: {filtered_lats}, {filtered_lons}")
+
 
 # Use OpenStreetMap tile background
 osm_tiles = OSM()
 fig, ax = plt.subplots(figsize=(10, 6), subplot_kw={"projection": osm_tiles.crs})
 
 # Set map extent
-ax.set_extent([dfPlot["Longitude"].min(), dfPlot["Longitude"].max(),
-               dfPlot["Latitude"].min(), dfPlot["Latitude"].max()], crs=ccrs.PlateCarree())
+ax.set_extent([min([dfPlot["Longitude"].min(), min(filtered_lons)]), max([dfPlot["Longitude"].max(), max(filtered_lons)]),
+                min([dfPlot["Latitude"].min(), min(filtered_lats)]), max([dfPlot["Latitude"].max(), max(filtered_lats)])], crs=ccrs.PlateCarree())
+            #    dfPlot["Latitude"].min(), dfPlot["Latitude"].max()], crs=ccrs.PlateCarree())
 
 # Add OSM tiles (detailed coastline & islands)
 ax.add_image(osm_tiles, 10)  # Higher zoom level = more detail
@@ -90,8 +96,7 @@ ax.add_image(osm_tiles, 10)  # Higher zoom level = more detail
 # Plot raw AIS data
 ax.plot(dfPlot["Longitude"], dfPlot["Latitude"], 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
 
-# Convert filtered XY back to lat/lon for plotting
-filtered_lats, filtered_lons = zip(*[xy_to_latlon(x[0], x[1], lat0, lon0) for x in trajectory])
+
 
 
 # Plot Kalman Filtered trajectory
