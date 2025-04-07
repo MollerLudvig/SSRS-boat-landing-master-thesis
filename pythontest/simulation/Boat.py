@@ -35,6 +35,7 @@ class Boat(Vehicle):
         self.connection.target_system, self.connection.target_component,
         mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, alt
     )
+    
 
 
 

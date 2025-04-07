@@ -6,6 +6,22 @@ import numpy as np
 class Vehicle():
     def __init__(self, connection):
         self.connection = connection
+        self.lat = None
+        self.lon = None
+        self.heading = None
+        self.vx = None
+        self.vy = None
+        self.speed = None
+        self.altitude = None
+
+    def set_parameter(self, param_name, value):
+        """Sets an ArduPilot parameter via MAVLink"""
+        self.connection.mav.param_set_send(
+            self.connection.target_system, self.connection.target_component,
+            param_name.encode(),  # Encode parameter name
+            float(value),         # Parameter value
+            mavutil.mavlink.MAV_PARAM_TYPE_REAL32  # Data type
+        )
 
     def arm_vehicle(self):
         while not self.connection.motors_armed():
@@ -48,13 +64,16 @@ class Vehicle():
         self.connection.mav.send(speed_msg)
 
     def get_message(self, msg):
-        return self.connection.recv_match(type=msg, blocking=False)
+        return self.connection.recv_match(type=msg, blocking=True)
     
     def flush_messages(self):
         while True:
             msg = self.connection.recv_msg()
             if msg is None:
                 break
+
+    def get_lat(self):
+        return 
 
 
 

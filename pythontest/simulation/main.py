@@ -3,6 +3,7 @@ from multiprocessing import Process
 
 import tester
 import working
+import cookin
 
 if __name__ == '__main__':
     Process(target=working.tester).start()

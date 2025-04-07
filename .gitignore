@@ -36,5 +36,21 @@ req.txt
 # Ignore environment files
 .env
 
+**.BIN
+**.bin
+**.parm
+**.tlog
+**.tlog.raw
+
+# simulation/
+# .txt
+
+
+MissionHandler/
+*arm
+*mode
+*servo
+*takeoff
+
 # Ignore unnecessary directories
 #dumbfuckdegenerate/

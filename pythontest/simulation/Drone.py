@@ -23,7 +23,7 @@ class Drone(Vehicle):
                 target_system=self.connection.target_system,
                 target_component=self.connection.target_component,
                 seq=i,
-                frame=mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+                frame=mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT, # MAV_FRAME_GLOBAL_INT
                 command=mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
                 current=0,
                 autocontinue=1,
@@ -36,10 +36,11 @@ class Drone(Vehicle):
             self.connection.mav.send(msg)
 
     def follow_target(self, lat, lon, alt):
-        waypoint1 = (lat[0], lon[0], alt[0])
-        #waypoint2 = (lat, lon, alt)
+        waypoints = [(lat[0], lon[0], alt[0])]
+        for i in range(len(lat)):
+            waypoints.append((lat[i], lon[i], alt[i]))
 
-        self.upload_mission([waypoint1, waypoint1])
+        self.upload_mission(waypoints)
         
         self.set_mode("AUTO")
         self.set_current_waypoint(1)
@@ -55,7 +56,6 @@ class Drone(Vehicle):
             self.connection.target_component,
             waypoint_index
         )
-        print(f"Set current waypoint to {waypoint_index}")
 
 
 
