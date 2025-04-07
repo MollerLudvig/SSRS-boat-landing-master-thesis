@@ -40,19 +40,24 @@ class KalmanFilterXY:
             self.last_time = timestamp
 
         # Update the state transition matrix F
+        dx = self.x[2,0] * np.sin(self.x[3,0]) * dt
+        dy = self.x[2,0] * np.cos(self.x[3,0]) * dt
+        print(f"dx: {dx}, dy: {dy}")
+        print(f"dt: {dt}")
+        print(f"v: {self.x[2,0]}, psi: {self.x[3,0]}")
         self.F = np.array([
-            [1, 0, dt*np.sin(self.x[3,0])*self.x[2,0], 0, 0],
-            [0, 1, dt*np.cos(self.x[3,0])*self.x[2,0], 0, 0],
+            [1, 0, dx, 0, 0],
+            [0, 1, dy, 0, 0],
             [0, 0, 1, 0, 0],
-            [0, 0, 0, 1, dt/self.x[2,0]],
-            [0, 0, 0, 0, 1]
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0]
         ])
 
         # Predict state
         self.x = self.F @ self.x
     
         # Dynamic process noise covariance that scales with velocity
-        v_scaler = 5
+        v_scaler = 0
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
@@ -68,8 +73,8 @@ class KalmanFilterXY:
             [0, 10, 0, 0, 0],
             [0, 0, 100, 0, 0],
             [0, 0, 0, 100, 0],
-            [0, 0, 0, 0, 1000]
-        ]) * (0.001 + np.abs(self.x[2,0]) * v_scaler)
+            [0, 0, 0, 0, 10]
+        ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
 
         # Update state covariance
         self.P = self.F @ self.P @ self.F.T + Q
@@ -155,7 +160,7 @@ class KalmanFilterXY:
             # R_AIS = np.eye(4) * 0.01
             R_AIS = np.array([[1, 0, 0, 0],
                               [0, 1, 0, 0],
-                              [0, 0, 5, 0],
-                              [0, 0, 0, 10]]) * 0.01
+                              [0, 0, 1, 0],
+                              [0, 0, 0, 1]]) * 0.01
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)

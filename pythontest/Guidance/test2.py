@@ -51,15 +51,16 @@ df["x"], df["y"] = zip(*df.apply(lambda row: latlon_to_xy(row["Latitude"], row["
 dfPlot = df.copy()
 
 
-kf = KalmanFilterXY(v = v0, psi = psi0,timestamp = time0,  process_noise_variance=0.001)
+kf = KalmanFilterXY(v = v0, psi = psi0,timestamp = time0,  process_noise_variance=0.01)
 
 t = time0
 dt = 5  # Time step in seconds
+t += dt
 trajectory = []
 velocity = []
 while True:
     # Predict the state
-    kf.predict(t, past_timestamp=t-1)
+    kf.predict(t, past_timestamp=t-dt)
     
     if df.empty:
             break
@@ -78,7 +79,7 @@ while True:
 # Convert filtered XY back to lat/lon for plotting
 filtered_lats, filtered_lons = zip(*[xy_to_latlon(x[0], x[1], lat0, lon0) for x in trajectory])
 
-print (f"Filtered trajectory: {filtered_lats}, {filtered_lons}")
+# print (f"Filtered trajectory: {filtered_lats}, {filtered_lons}")
 
 
 # Use OpenStreetMap tile background
