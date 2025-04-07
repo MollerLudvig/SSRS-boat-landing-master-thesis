@@ -6,78 +6,89 @@ import csv
 import os
 from datetime import datetime, timezone, timedelta
 import pytz
+import pyais
 from dotenv import load_dotenv
 
-verbose = False
+verbose = True
 
 
 
 class AISTracker:
-    def __init__(self, MMSI="265509950", csvFileName="AIS_data", apiKey=None):
-        self.APIKey = apiKey if apiKey else os.getenv("AIS_API_KEY", "YOUR_DEFAULT_API_KEY")
+    def __init__(self, MMSI="265547240", csvFileName="vipan"):
         self.MMSI = MMSI
         self.csvFileName = csvFileName
-        self.id = None
-        self.lat = None
-        self.long = None
-        self.sog = None
-        self.yaw = None
-        self.rateOfTurn = None
+        self.data = {}
         self.timestampUnix = time.time()
         self.timestamp = datetime.now(timezone.utc)
         self.timestatus = "Uninitiated"
         self.timezone = pytz.timezone("Europe/Stockholm")
+        self.sessionFileName = None
+        self.headerWritten = False
+        self.fieldnames = []
 
+    async def tcp_login(self, addr, port, username, password):
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(addr, port), timeout=5
+            )
+        except asyncio.TimeoutError:
+            print(f"Timeout connecting to AIS server at {addr}:{port}")
+            return None, None
 
+        login_msg = (
+            bytes([1])
+            + username.encode("utf-8")
+            + bytes([0])
+            + password.encode("utf-8")
+            + bytes([0])
+        )
+
+        writer.write(login_msg)
+        await writer.drain()
+        return reader, writer
+    
     async def connect_ais_stream(self):
+        reader, _ = await self.tcp_login(
+            "ais.ssrs.se", 10024, "fredrik.falkman", "ssrs2027"
+        )
 
+        if reader is None:
+            return
+
+        buf = b""
         while True:
-            try:
-                async with websockets.connect("wss://stream.aisstream.io/v0/stream") as websocket:
-                    subscribe_message = {"APIKey": self.APIKey,  # Required
-                                        "BoundingBoxes": [[[-90, -180], [90, 180]]], # Required
-                                        "FiltersShipMMSI": [self.MMSI], # Vessel MMSI data (retrieved from AIS marinetraffic)
-                                        # "FilterMessageTypes": ["PositionReport"] # Optional men e la go enna
-                    }
+            msg = await reader.readline()
+            if msg == b"":
+                print("AIS server closed connection")
+                break
 
-                    if verbose:
-                        print(f"key{self.APIKey} connecting to AIS stream...")
+            if msg.startswith(b"!ABVDM"):
+                try:
+                    if buf:
+                        ais_msg = pyais.decode(buf, msg)
+                        buf = b""
+                    else:
+                        ais_msg = pyais.decode(msg)
+                except pyais.exceptions.MissingMultipartMessageException:
+                    buf += msg
+                    continue
+
+                # Only save message if complete
+                if buf == b"":
+                    data = json.loads(ais_msg.to_json())
+                    mmsi = data.get("mmsi")
                     
-                    subscribe_message_json = json.dumps(subscribe_message)
-                    await websocket.send(subscribe_message_json)
+                    # Save message if MMSI matches
+                    if str(mmsi) == str(self.MMSI):
+                        # Print the message if verbose is enabled
+                        if verbose:
+                            print(f"Received AIS message: {data}")
 
-                    async for message_json in websocket:
-                        message = json.loads(message_json)
-                        message_type = message["MessageType"]
-                        if message_type == "PositionReport":
-                            # the message parameter contains a key of the message type which contains the message itself
-                            ais_message = message['Message']['PositionReport']
+                        self.data = data
+                        # Add timestamps
+                        self._manage_time()
 
-
-                            # Check if the message is for the correct MMSI
-                            self._manage_time(ais_message['Timestamp'])
-
-                            self.id = ais_message['UserID']
-                            self.lat = ais_message['Latitude']
-                            self.long = ais_message['Longitude']
-                            self.sog = ais_message['Sog'] * 0.514444 # Convert from knots to m/s
-                            self.yaw = ais_message['TrueHeading']
-                            self.rateOfTurn = ais_message.get('RateOfTurn')
-
-                            # Do something with the data
-                            if verbose:
-                                self.print_AIS_data()
-                            else:
-                                print(f"Ship {self.csvFileName} received PositionReport")
-                            self.save_AIS_data_csv()
-
-
-            except (websockets.exceptions.ConnectionClosedError, websockets.exceptions.ConnectionClosedOK) as e:
-                print(f"Ship {self.csvFileName}. WebSocket connection lost: {e}. Reconnecting in 5 seconds...")
-                await asyncio.sleep(5)
-            except Exception as e:
-                print(f"Ship {self.csvFileName}. Unexpected error: {e}. Reconnecting in 5 seconds...")
-                await asyncio.sleep(5)
+                        self.save_full_ais_data_csv()
 
     def save_AIS_data_csv(self):
         directory = "data"
@@ -105,67 +116,50 @@ class AISTracker:
                 self.id, self.lat, self.long, self.sog, self.yaw, self.rateOfTurn
             ])
 
+    def save_full_ais_data_csv(self):
+        directory = "data"
+        os.makedirs(directory, exist_ok=True)
+
+        if not self.sessionFileName:
+            baseFilename = os.path.join(directory, self.csvFileName)
+            fileNumber = 1
+            while os.path.exists(f"{baseFilename}_{fileNumber}.csv"):
+                fileNumber += 1
+            self.sessionFileName = f"{baseFilename}_{fileNumber}.csv"
+
+        # Update the data dictionary with the new values
+        if not self.fieldnames:
+            self.fieldnames = list(self.data.keys())
+
+        fileExists = os.path.exists(self.sessionFileName)
+
+        with open(self.sessionFileName, "a", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=self.fieldnames)
+
+            if not fileExists:
+                writer.writeheader()
+            writer.writerow(self.data)
 
 
-    def print_AIS_data(self):
-        """
-        Print the AIS data in a readable format.
-        """
-        print("\nAIS data:")
-        print(f"Time: {self.timestamp}")
-        print(f"Time unix: {self.timestampUnix}")
-        print(f"Time status: {self.timestatus}")
-        print(f"ShipId: {self.id}")
-        print(f"Latitude: {self.lat}")
-        print(f"Longitude: {self.long}")
-        print(f"Speed: {self.sog}")
-        print(f"Heading: {self.yaw}")
-        print(f"Rate of Turn: {self.rateOfTurn}")
-
-
-    """
-    Getters for AIS data
-    """
-
-    def get_AIS_data(self):
-        """
-        Returns the AIS data as a dictionary.
-        """
-        return {
-            "id": self.id,
-            "lat": self.lat,
-            "long": self.long,
-            "sog": self.sog,
-            "yaw": self.yaw,
-            "rateOfTurn": self.rateOfTurn,
-            "timestampUnix": self.timestampUnix,
-            "timestamp": self.timestamp,
-            "timestatus": self.timestatus
-        }
-                    
-
-    def _manage_time(self, timestamp):
-        """
-        Convert timestamp to datetime object and Unix timestamp.
-        """
+    def _manage_time(self):
         currentTime = datetime.now(self.timezone)
+        second = self.data.get("second")
 
-        if 0 <= timestamp <= 59:
-            # Replace swedish time with correct second 
-            self.timestamp = currentTime.replace(second=timestamp, microsecond=0)
-            # If the timestamp is in the future, subtract a minute
+        # Check if second is int and in range
+        if isinstance(second, int) and 0 <= second <= 59:
+            self.timestamp = currentTime.replace(second=second, microsecond=0)
+            
+            # Timestamp ahead of current time indicates rollover on minute between measurement and an received message
             if currentTime < self.timestamp:
                 self.timestamp -= timedelta(minutes=1)
 
-            # Convert to Unix timestamp
             self.timestampUnix = self.timestamp.timestamp()
             self.timestatus = "ok"
-
         else:
-            # Handle special cases for AIS timestamps
+            # Second outside range indicates other timestamp status
             self.timestamp = None
             self.timestampUnix = None
-            match timestamp:
+            match second:
                 case 60:
                     self.timestatus = "Time stamp is not available"
                 case 61:
@@ -176,56 +170,18 @@ class AISTracker:
                     self.timestatus = "Positioning is inoperative"
                 case _:
                     self.timestatus = "Unknown timestamp value"
-    
-def load_api_keys(csv_path="api_keys.csv"):
-    """Load API keys from a CSV file."""
-    api_keys = []
-    if not os.path.exists(csv_path):
-        raise FileNotFoundError(f"API keys file '{csv_path}' not found.")
-    
-    with open(csv_path, newline="") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            api_keys.append(row["api_key"].strip())  # Ensure no extra spaces
-    
-    if not api_keys:
-        raise ValueError("No API keys found in CSV file.")
 
-    return api_keys
+        self.data["timestamp"] = self.timestamp
+        self.data["timestamp_unix"] = self.timestampUnix
+        self.data["timestatus"] = self.timestatus
+
 
 if __name__ == "__main__":
     # List of MMSI numbers to track
-    vessels = [
-        # ("266460000", "fisk1"),
-        # ("219340000", "fisk2"),
-        # ("265650950", "rivo"),
-        # ("265547210", "arlan"),
-        # ("265509950", "vesta"),
-        # ("265547270", "froja"),
-        # ("265547230", "ylva"),
-        # ("265547240", "vipan"),
-        ("265650970", "valo")
-        # ("265548670", "fjordska"),
-        # ("265812010", "snuten"),
-        # ("265547250", "skarven"),
-        # ("265739650", "alvfrida"),
-        # ("265029700", "elois"),
-        # ("265501910", "hamnen")
-    ]
 
-    # Load API keys from CSV
-    API_KEYS = load_api_keys()
-    if verbose:
-        print(f"Loaded {len(API_KEYS)} API keys from CSV.")
-
-    # Assign API keys to each vessel in a round-robin fashion
-    trackers = [
-        AISTracker(MMSI=mmsi, csvFileName=name, apiKey=API_KEYS[i % len(API_KEYS)])
-        for i, (mmsi, name) in enumerate(vessels)
-    ]
+    tracker = AISTracker(MMSI="265547230", csvFileName="ylva")
 
     async def main():
-        tasks = [asyncio.create_task(tracker.connect_ais_stream()) for tracker in trackers]
-        await asyncio.gather(*tasks)
+        await tracker.connect_ais_stream()
 
     asyncio.run(main())
