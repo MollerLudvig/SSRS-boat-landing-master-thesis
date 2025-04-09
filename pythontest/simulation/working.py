@@ -2,92 +2,38 @@ from pymavlink import mavutil
 from subprocess import Popen, PIPE
 from time import sleep
 import numpy as np
+import asyncio
 from redis_communication import RedisClient
 import WP_calculation as wp
 
-from Drone import Drone
-from Boat import Boat
 
 R = 6371000 # Earth radius
 
-def tester():
+Gr = 1/10 # Glide ratio
+# NOTE: Can use descent_lookahead only for starting early (before P2), 
+# then not look forward while already in descent
+descent_lookahead = 8 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+# "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
+# Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
+# So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
+cruise_altitude = 18 # In meters, 
+aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
+boat_length = 1.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+started_descent = False # Bool to keep track when descent is started
 
-    # Establish connection
-    drone_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
-    boat_connection = mavutil.mavlink_connection('udp:127.0.0.1:14560')
 
-    drone_connection.wait_heartbeat()
-    boat_connection.wait_heartbeat()
-
-    drone = Drone(drone_connection)
-    boat = Boat(boat_connection)
-
-    drone_msg = drone.get_message('HEARTBEAT')
-    boat_msg = boat.get_message('HEARTBEAT')
+def tester(drone, boat):
     
-    # Parameter settings
-    drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
-    drone.set_parameter("TECS_TIME_CONST", 5.0) # Default: 5.0
-    drone.set_parameter("TECS_THR_DAMP", 0.5) # Default: 0.5
-    drone.set_parameter("TECS_PITCH_MIN", 0.0) # Default: 0.0
-    drone.set_parameter("TECS_PTCH_DAMP", 0.3) # Default: 0.3
-    drone.set_parameter("TECS_HGT_OMEGA", 3.0) # Default: 3.0
-    drone.set_parameter("TECS_VERT_ACC", 7) # Default: 7
-    drone.set_parameter("TECS_INTEG_GAIN", 0.3) # Default: 0.3
+    initiate_drone_settings(drone)
+    drone_takeoff(drone)
 
-    sleep(5)
     # Init redisclient
     rc = RedisClient()
 
-    # Set modes
-    drone.set_mode("FBWB")
-    boat.set_mode("GUIDED")
-    
-    # Arm vehicles
-    drone.arm_vehicle()
-    sleep(3)
-    boat.arm_vehicle()
-    sleep(5)
 
-    # Takeoff vehicles
-    boat.takeoff(3)
-    sleep(10)
-    drone.set_servo(3, 1800)
-    sleep(3)
-
-    Gr = 1/10 # Glide ratio
-    # NOTE: Can use descent_lookahead only for starting early (before P2), 
-    # then not look forward while already in descent
-    descent_lookahead = 8 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
-    # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
-    # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
-    # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
-    cruise_altitude = 18 # In meters, 
-    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-    boat_length = 1.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
-    started_descent = False # Bool to keep track when descent is started
 
     # Main loop
     while True:
-
-        # Retrieve all data
-        boat_pos_msg = boat.get_message('GLOBAL_POSITION_INT')
-        boat.lat = boat_pos_msg.lat / 1e7
-        boat.lon = boat_pos_msg.lon / 1e7
-        boat.heading = boat_pos_msg.hdg /100
-        boat.vx = boat_pos_msg.vx / 100
-        boat.vy = boat_pos_msg.vy /100
-        boat.speed = np.sqrt(boat.vx**2+boat.vy**2)
-        boat.altitude = boat_pos_msg.alt/1000
-
-        drone_pos_msg = drone.get_message('GLOBAL_POSITION_INT')
-        drone.lat = drone_pos_msg.lat / 1e7
-        drone.lon = drone_pos_msg.lon / 1e7
-        drone.heading = drone_pos_msg.hdg / 100
-        drone.vx = drone_pos_msg.vx / 100
-        drone.vy = drone_pos_msg.vy /100
-        drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
-        drone.altitude = drone_pos_msg.alt/1000
 
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
@@ -240,8 +186,40 @@ def tester():
 
 
 
+def initiate_drone_settings(drone):
+    # Parameter settings
+    drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
+    drone.set_parameter("TECS_TIME_CONST", 5.0) # Default: 5.0
+    drone.set_parameter("TECS_THR_DAMP", 0.5) # Default: 0.5
+    drone.set_parameter("TECS_PITCH_MIN", 0.0) # Default: 0.0
+    drone.set_parameter("TECS_PTCH_DAMP", 0.3) # Default: 0.3
+    drone.set_parameter("TECS_HGT_OMEGA", 3.0) # Default: 3.0
+    drone.set_parameter("TECS_VERT_ACC", 7) # Default: 7
+    drone.set_parameter("TECS_INTEG_GAIN", 0.3) # Default: 0.3
+
+    sleep(5)
 
 
+async def drone_takeoff(drone):
+     # Set modes
+    drone.set_mode("FBWB")
+    
+    # Arm vehicles
+    drone.arm_vehicle()
+    sleep(5)
 
+    # Takeoff vehicles
+    drone.set_servo(3, 1800)
+    sleep(5)
 
+async def boat_launch(boat):
+    # Set modes
+    boat.set_mode("GUIDED")
+    
+    # Arm vehicles
+    boat.arm_vehicle()
+    sleep(5)
 
+    # Takeoff vehicles
+    boat.takeoff(3)
+    sleep(5)

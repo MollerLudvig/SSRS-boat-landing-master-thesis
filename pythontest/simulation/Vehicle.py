@@ -66,6 +66,17 @@ class Vehicle():
     def get_message(self, msg):
         return self.connection.recv_match(type=msg, blocking=True)
     
+    async def gat_global_position(self):
+        pos_msg = self.get_message('GLOBAL_POSITION_INT')
+        self.lat = pos_msg.lat / 1e7
+        self.lon = pos_msg.lon / 1e7
+        self.heading = pos_msg.hdg /100
+        self.vx = pos_msg.vx / 100
+        self.vy = pos_msg.vy /100
+        self.speed = np.sqrt(self.vx**2+self.vy**2)
+        self.altitude = pos_msg.alt/1000
+
+
     def flush_messages(self):
         while True:
             msg = self.connection.recv_msg()
