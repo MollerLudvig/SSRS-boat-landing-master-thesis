@@ -1,3 +1,4 @@
 pymavlink
 numpy
 redis
+asyncio

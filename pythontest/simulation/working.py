@@ -9,6 +9,8 @@ import WP_calculation as wp
 
 R = 6371000 # Earth radius
 
+verbose = True # Print debug messages
+
 Gr = 1/10 # Glide ratio
 # NOTE: Can use descent_lookahead only for starting early (before P2), 
 # then not look forward while already in descent
@@ -22,10 +24,11 @@ boat_length = 1.5 # In meters, Eyeballed length from drone that is driving boat 
 started_descent = False # Bool to keep track when descent is started
 
 
-def tester(drone, boat):
+async def tester(drone, boat, simulation):
     
     initiate_drone_settings(drone)
-    drone_takeoff(drone)
+
+    await asyncio.gather(drone_takeoff(drone),boat_launch(boat))
 
     # Init redisclient
     rc = RedisClient()
