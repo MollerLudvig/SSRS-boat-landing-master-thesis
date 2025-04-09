@@ -85,6 +85,10 @@ class AISTracker:
                             print(f"Received AIS message: {data}")
 
                         self.data = data
+                        
+                        # Add speed in m/s
+                        self.data["speed[m/s]"] = data.get("speed") * 0.514444
+
                         # Add timestamps
                         self._manage_time()
 
