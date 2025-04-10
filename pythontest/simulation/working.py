@@ -57,13 +57,13 @@ def tester():
     drone.set_servo(3, 1800)
     sleep(3)
 
-    Gr = 1/10 # Glide ratio
+    Gr = 1/20 # Glide ratio
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     
     # NOTE: Can use descent_lookahead only for starting early (before P2), 
     # then not look forward while already in descent
-    descent_lookahead = 3 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+    descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
     # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
     # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
     # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
@@ -79,6 +79,7 @@ def tester():
     z_wanteds = []
     needed_sink_rates = []
     wanted_sink_rates = []
+    actual_sink_rates = []
     xs = [0]
 
     i = 0
@@ -102,7 +103,8 @@ def tester():
         drone.lon = drone_pos_msg.lon / 1e7
         drone.heading = drone_pos_msg.hdg / 100
         drone.vx = drone_pos_msg.vx / 100
-        drone.vy = drone_pos_msg.vy /100
+        drone.vy = drone_pos_msg.vy / 100
+        drone.vz = drone_pos_msg.vz / 100
         drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
         drone.altitude = drone_pos_msg.alt/1000
 
@@ -259,6 +261,7 @@ def tester():
                 drone_altitudes.append(drone.altitude)
                 needed_sink_rates.append(needed_sink_rate)
                 wanted_sink_rates.append(wanted_sink_rate)
+                actual_sink_rates.append(drone.vz)
 
                 if i >= 1:
                     dist_to_start_coord = wp.dist_between_coords(drone_coordinates[0][0], drone_coordinates[0][1],
@@ -271,6 +274,7 @@ def tester():
                     "z_wanted": z_wanteds,
                     "needed_sr": needed_sink_rates,
                     "wanted_sr": wanted_sink_rates,
+                    "actual_sr": actual_sink_rates,
                     "Gr": Gr})
                 
                 boat.data.update({"altitude": boat.altitude})
@@ -279,6 +283,10 @@ def tester():
                 rc.add_stream_message("drone data", drone.data)
                 rc.add_stream_message("boat data", boat.data)
                 rc.add_stream_message("needed_glide_ratio", needed_Gr)
+
+                # Drone as landed on boat
+                if drone.altitude < boat.altitude + 1.5:
+                    rc.add_stream_message("stage", "diversion")
 
                 i += 1
 

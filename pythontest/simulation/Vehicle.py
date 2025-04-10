@@ -11,6 +11,7 @@ class Vehicle():
         self.heading = None
         self.vx = None
         self.vy = None
+        self.vz = None
         self.speed = None
         self.altitude = None
         self.data = {}
