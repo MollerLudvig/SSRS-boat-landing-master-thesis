@@ -37,6 +37,7 @@ req.txt
 .env
 
 **.BIN
+**.TXT
 **.bin
 **.parm
 **.tlog
