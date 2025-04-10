@@ -2,6 +2,7 @@ from pymavlink import mavutil
 from subprocess import Popen, PIPE
 from time import sleep
 import numpy as np
+import asyncio
 
 class Vehicle():
     def __init__(self, connection):
@@ -77,6 +78,7 @@ class Vehicle():
             self.vy = pos_msg.vy /100
             self.speed = np.sqrt(self.vx**2+self.vy**2)
             self.altitude = pos_msg.alt/1000
+            await asyncio.sleep(1)
 
 
     def flush_messages(self):
