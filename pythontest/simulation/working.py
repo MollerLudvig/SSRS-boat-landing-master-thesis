@@ -57,16 +57,13 @@ def tester():
     drone.set_servo(3, 1800)
     sleep(3)
 
-    Gr = 1/15 # Glide ratio
+    Gr = 1/10 # Glide ratio
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
-
-    # For plot title
-    rc.add_stream_message("glide_ratio", Gr)
     
     # NOTE: Can use descent_lookahead only for starting early (before P2), 
     # then not look forward while already in descent
-    descent_lookahead = 8 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+    descent_lookahead = 3 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
     # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
     # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
     # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
@@ -80,6 +77,8 @@ def tester():
     drone_altitudes = []
     drone_coordinates = []
     z_wanteds = []
+    needed_sink_rates = []
+    wanted_sink_rates = []
     xs = [0]
 
     i = 0
@@ -236,10 +235,11 @@ def tester():
                 # Can use z_wanted_lh to calculate error if faster response is needed
                 altitude_error = drone.altitude - z_wanted
                 sink_rate_correction = altitude_error*altitude_error_gain
+                needed_sink_rate = wanted_sink_rate + sink_rate_correction
 
                 # Set sink rate of drone according to wanted sink rate and error correction
-                drone.set_parameter("TECS_SINK_MIN", wanted_sink_rate + sink_rate_correction) # Default: 2.0
-                drone.set_parameter("TECS_SINK_MAX", wanted_sink_rate + sink_rate_correction) # Default: 5.0
+                drone.set_parameter("TECS_SINK_MIN", needed_sink_rate) # Default: 2.0
+                drone.set_parameter("TECS_SINK_MAX", needed_sink_rate) # Default: 5.0
 
                 print(f"z wanted: {z_wanted}")
                 print(f"Drone speed: {drone.speed}")
@@ -257,16 +257,30 @@ def tester():
                 # Save z_wanted not z_wanted_lh because we compare to where the drone currently should be
                 z_wanteds.append(z_wanted)
                 drone_altitudes.append(drone.altitude)
+                needed_sink_rates.append(needed_sink_rate)
+                wanted_sink_rates.append(wanted_sink_rate)
 
                 if i >= 1:
                     dist_to_start_coord = wp.dist_between_coords(drone_coordinates[0][0], drone_coordinates[0][1],
                                                                 drone_coordinates[i][0], drone_coordinates[i][1])
                     xs.append(dist_to_start_coord)
-                    
-                rc.add_stream_message("traj_plot", [xs, drone_altitudes, boat.altitude, z_wanteds])
+
+                # Update data dicts
+                drone.data.update({"xs": xs,
+                    "altitude": drone_altitudes,
+                    "z_wanted": z_wanteds,
+                    "needed_sr": needed_sink_rates,
+                    "wanted_sr": wanted_sink_rates,
+                    "Gr": Gr})
+                
+                boat.data.update({"altitude": boat.altitude})
+                
+                # Send data to redis stream
+                rc.add_stream_message("drone data", drone.data)
+                rc.add_stream_message("boat data", boat.data)
+                rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
                 i += 1
-                rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
                 drone.follow_target([P3_lat, boat_target_lat], [P3_lon, boat_target_lon], 
                                     [boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
@@ -283,9 +297,7 @@ def tester():
             rc.add_stream_message("needed_glide_ratio", Gr)
         
         elif drone.stage == "exit":
-            # Shut down connection and gazebo
-            
-            
+            # Shut down connection and gazebo            
             break
         
         # No command
