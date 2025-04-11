@@ -8,7 +8,7 @@ from Vehicle import Vehicle
 class Drone(Vehicle):
     def __init__(self, connection):
         self.connection = connection
-        self.stage = None
+        self.stage = "Starting"
         super().__init__(connection)
 
     def upload_mission(self, waypoints):

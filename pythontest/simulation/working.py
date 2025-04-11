@@ -9,104 +9,100 @@ import matplotlib.pyplot as plt
 
 from Drone import Drone
 from Boat import Boat
+from Guidance.kalman_OOSM import KalmanFilterXY
 
 R = 6371000 # Earth radius
 
+
+
+# Establish connection
+drone_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
+boat_connection = mavutil.mavlink_connection('udp:127.0.0.1:14560')
+
+drone_connection.wait_heartbeat()
+boat_connection.wait_heartbeat()
+
+drone = Drone(drone_connection)
+boat = Boat(boat_connection)
+
+drone_msg = drone.get_message('HEARTBEAT')
+boat_msg = boat.get_message('HEARTBEAT')
+
+Gr = 1/20 # Glide ratio
+
+
+# Init redisclient
+rc = RedisClient()
+# For missionhandler abort condition
+rc.add_stream_message("needed_glide_ratio", Gr)
+
+# NOTE: Can use descent_lookahead only for starting early (before P2), 
+# then not look forward while already in descent
+descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+# "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
+# Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
+# So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
+
+cruise_altitude = 18 # In meters, 
+aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
+boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+altitude_error_gain = 0.225
+started_descent = False # Bool to keep track when descent is started
+
+drone_altitudes = []
+drone_coordinates = []
+z_wanteds = []
+needed_sink_rates = []
+wanted_sink_rates = []
+actual_sink_rates = []
+xs = [0]
+
 def tester():
-
-    # Establish connection
-    drone_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
-    boat_connection = mavutil.mavlink_connection('udp:127.0.0.1:14560')
-
-    drone_connection.wait_heartbeat()
-    boat_connection.wait_heartbeat()
-
-    drone = Drone(drone_connection)
-    boat = Boat(boat_connection)
-
-    drone_msg = drone.get_message('HEARTBEAT')
-    boat_msg = boat.get_message('HEARTBEAT')
-    
-    # Parameter settings
-    drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
-    drone.set_parameter("TECS_TIME_CONST", 3.0) # Default: 5.0
-    drone.set_parameter("TECS_THR_DAMP", 0.5) # Default: 0.5
-    drone.set_parameter("TECS_PITCH_MIN", 0.0) # Default: 0.0
-    drone.set_parameter("TECS_PTCH_DAMP", 0.3) # Default: 0.3
-    drone.set_parameter("TECS_HGT_OMEGA", 3.0) # Default: 3.0
-    drone.set_parameter("TECS_VERT_ACC", 8) # Default: 7
-    drone.set_parameter("TECS_INTEG_GAIN", 0.5) # Default: 0.3
-
-    sleep(5)
-    # Init redisclient
-    rc = RedisClient()
-
-    # Set modes
-    drone.set_mode("FBWB")
-    boat.set_mode("GUIDED")
-    
-    # Arm vehicles
-    drone.arm_vehicle()
-    sleep(3)
-    boat.arm_vehicle()
-    sleep(5)
-
-    # Takeoff vehicles
-    boat.takeoff(3)
-    sleep(10)
-    drone.set_servo(3, 1800)
-    sleep(3)
-
-    Gr = 1/20 # Glide ratio
-    # For missionhandler abort condition
-    rc.add_stream_message("needed_glide_ratio", Gr)
-    
-    # NOTE: Can use descent_lookahead only for starting early (before P2), 
-    # then not look forward while already in descent
-    descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
-    # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
-    # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
-    # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
-
-    cruise_altitude = 18 # In meters, 
-    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
-    altitude_error_gain = 0.225
-    started_descent = False # Bool to keep track when descent is started
-
-    drone_altitudes = []
-    drone_coordinates = []
-    z_wanteds = []
-    needed_sink_rates = []
-    wanted_sink_rates = []
-    actual_sink_rates = []
-    xs = [0]
+    start_vehicles_simulation()
 
     i = 0
     # Main loop
     while True:
 
-        # Retrieve all data
-        boat_pos_msg = boat.get_message('GLOBAL_POSITION_INT')
-        boat.lat = boat_pos_msg.lat / 1e7
-        boat.lon = boat_pos_msg.lon / 1e7
-        boat.heading = boat_pos_msg.hdg /100
+        drone.update_possition_mavlink()
+        boat.update_possition_mavlink()
         boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
 
-        boat.vx = boat_pos_msg.vx / 100
-        boat.vy = boat_pos_msg.vy /100
-        boat.speed = np.sqrt(boat.vx**2+boat.vy**2)
-        boat.altitude = boat_pos_msg.alt/1000
+    
+        if i == 0:
+            kf = innit_filter(boat)
 
-        drone_pos_msg = drone.get_message('GLOBAL_POSITION_INT')
-        drone.lat = drone_pos_msg.lat / 1e7
-        drone.lon = drone_pos_msg.lon / 1e7
-        drone.heading = drone_pos_msg.hdg / 100
-        drone.vx = drone_pos_msg.vx / 100
-        drone.vy = drone_pos_msg.vy / 100
-        drone.vz = drone_pos_msg.vz / 100
-        drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
-        drone.altitude = drone_pos_msg.alt/1000
+
+        # Simulateing sparse updates
+        if i%3 == 0:
+            update_boat_position(kf, boat)
+            # Update boat position 
+        else:
+            
+
+
+
+        # Retrieve all data
+        # boat_pos_msg = boat.get_message('GLOBAL_POSITION_INT')
+        # boat.lat = boat_pos_msg.lat / 1e7
+        # boat.lon = boat_pos_msg.lon / 1e7
+        # boat.heading = boat_pos_msg.hdg /100
+        # boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
+
+        # boat.vx = boat_pos_msg.vx / 100
+        # boat.vy = boat_pos_msg.vy /100
+        # boat.speed = np.sqrt(boat.vx**2+boat.vy**2)
+        # boat.altitude = boat_pos_msg.alt/1000
+
+        # drone_pos_msg = drone.get_message('GLOBAL_POSITION_INT')
+        # drone.lat = drone_pos_msg.lat / 1e7
+        # drone.lon = drone_pos_msg.lon / 1e7
+        # drone.heading = drone_pos_msg.hdg / 100
+        # drone.vx = drone_pos_msg.vx / 100
+        # drone.vy = drone_pos_msg.vy / 100
+        # drone.vz = drone_pos_msg.vz / 100
+        # drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
+        # drone.altitude = drone_pos_msg.alt/1000
 
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
@@ -305,7 +301,8 @@ def tester():
             rc.add_stream_message("needed_glide_ratio", Gr)
         
         elif drone.stage == "exit":
-            # Shut down connection and gazebo            
+            # Shut down connection and gazebo    
+            print("Shutting down connection and gazebo")        
             break
         
         # No command
@@ -327,8 +324,63 @@ def tester():
 
 
 
+def innit_filter(boat):
+    # Get initial position of boat
+    boat.update_possition_mavlink()
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
+
+    # Set initial positional values
+    boat.inital_lat = boat.lat
+    boat.inital_lon = boat.lon
+    boat.x = 0
+    boat.y = 0
+
+    #innitiate kf filter
+    kf = KalmanFilterXY(boat.inital_lat, boat.inital_lon, boat.x, boat.y, boat.xdot, boat.ydot)
+
+    return kf
+
+def update_boat_position(kf, boat):
+    boat.update_possition_mavlink()
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)''
+    z = np.array([[boat.deck_lat], [boat.deck_lon], [boat.vx], [boat.heading]])
+
+    #update filter with new position
+    kf.update_AIS(z, time.time())
+
+    boat.x = kf.x[0][0]
+    boat.y = kf.x[1][0]
+    boat.vx = kf.x[2][0]
+    boat.heading = kf.x[3][0]
+    
+    return kf
 
 
+def start_vehicles_simulation():
+    # Parameter settings
+    drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
+    drone.set_parameter("TECS_TIME_CONST", 3.0) # Default: 5.0
+    drone.set_parameter("TECS_THR_DAMP", 0.5) # Default: 0.5
+    drone.set_parameter("TECS_PITCH_MIN", 0.0) # Default: 0.0
+    drone.set_parameter("TECS_PTCH_DAMP", 0.3) # Default: 0.3
+    drone.set_parameter("TECS_HGT_OMEGA", 3.0) # Default: 3.0
+    drone.set_parameter("TECS_VERT_ACC", 8) # Default: 7
+    drone.set_parameter("TECS_INTEG_GAIN", 0.5) # Default: 0.3
 
+    sleep(5)
 
+    # Set modes
+    drone.set_mode("FBWB")
+    boat.set_mode("GUIDED")
 
+    # Arm vehicles
+    drone.arm_vehicle()
+    sleep(3)
+    boat.arm_vehicle()
+    sleep(5)
+
+    # Takeoff vehicles
+    boat.takeoff(3)
+    sleep(10)
+    drone.set_servo(3, 1800)
+    sleep(3)
