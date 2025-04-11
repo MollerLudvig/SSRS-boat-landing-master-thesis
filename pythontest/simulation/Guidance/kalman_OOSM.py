@@ -2,11 +2,17 @@ import numpy as np
 import time
 from collections import deque
 import bisect
+from coordinate_conv import latlon_to_xy, xy_to_latlon
+
 
 class KalmanFilterXY:
-    def __init__(self, v = 0, psi = 0, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+    def __init__(self, v = 0, psi = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
         self.x = np.array([[0], [0], [v], [psi], [0]])  # State: [x, y, speed, yaw, yaw rate]
+        self.init_lat = init_lat
+        self.init_lon = init_lon
+        self.lat = None
+        self.lon = None
         self.n = self.x.shape[0]
         self.P = np.eye(self.n)  # Covariance
         self.process_noise_variance = process_noise_variance
@@ -55,6 +61,9 @@ class KalmanFilterXY:
 
         # Predict state
         self.x = self.F @ self.x
+
+        # Set lat lon
+        self.lat, self.lon = xy_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
     
         # Dynamic process noise covariance that scales with velocity
         v_scaler = 0
@@ -94,6 +103,9 @@ class KalmanFilterXY:
         self.x = self.x + K @ y # Update state
         I = np.eye(self.n) # Identity matrix
         self.P = (I - K @ H) @ self.P @ (I - K @ H).T + K @ R @ K.T  # Joseph form
+
+        # Set lat lon
+        self.lat, self.lon = xy_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
 
     def _handle_OOSM(self, z, H, R, timestamp):
         """
@@ -164,3 +176,12 @@ class KalmanFilterXY:
                               [0, 0, 0, 1]]) * 0.01
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
+
+    def update_w_latlon(self,z, timestamp, R_AIS=None):
+        """Update with AIS measurement ([lat, lon, speed, yaw])."""
+
+        # Substitute lat lon with x, y in measurment vector
+        z[0][0], z[1][0] = latlon_to_xy(z[0][0], z[1][0], self.init_lat, self.init_lon)
+
+        # Update through conventional function
+        self.update_AIS(z,timestamp, R_AIS)

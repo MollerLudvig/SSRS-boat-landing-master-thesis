@@ -78,31 +78,7 @@ def tester():
             update_boat_position(kf, boat)
             # Update boat position 
         else:
-            
-
-
-
-        # Retrieve all data
-        # boat_pos_msg = boat.get_message('GLOBAL_POSITION_INT')
-        # boat.lat = boat_pos_msg.lat / 1e7
-        # boat.lon = boat_pos_msg.lon / 1e7
-        # boat.heading = boat_pos_msg.hdg /100
-        # boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
-
-        # boat.vx = boat_pos_msg.vx / 100
-        # boat.vy = boat_pos_msg.vy /100
-        # boat.speed = np.sqrt(boat.vx**2+boat.vy**2)
-        # boat.altitude = boat_pos_msg.alt/1000
-
-        # drone_pos_msg = drone.get_message('GLOBAL_POSITION_INT')
-        # drone.lat = drone_pos_msg.lat / 1e7
-        # drone.lon = drone_pos_msg.lon / 1e7
-        # drone.heading = drone_pos_msg.hdg / 100
-        # drone.vx = drone_pos_msg.vx / 100
-        # drone.vy = drone_pos_msg.vy / 100
-        # drone.vz = drone_pos_msg.vz / 100
-        # drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
-        # drone.altitude = drone_pos_msg.alt/1000
+            predict_kf(kf)
 
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
@@ -324,7 +300,7 @@ def tester():
 
 
 
-def innit_filter(boat):
+def innit_filter():
     # Get initial position of boat
     boat.update_possition_mavlink()
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
@@ -340,21 +316,27 @@ def innit_filter(boat):
 
     return kf
 
-def update_boat_position(kf, boat):
+def update_boat_position(kf):
     boat.update_possition_mavlink()
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)''
     z = np.array([[boat.deck_lat], [boat.deck_lon], [boat.vx], [boat.heading]])
 
     #update filter with new position
-    kf.update_AIS(z, time.time())
+    kf.update_w_latlon(z, time.time())
 
-    boat.x = kf.x[0][0]
-    boat.y = kf.x[1][0]
-    boat.vx = kf.x[2][0]
-    boat.heading = kf.x[3][0]
+    boat.lat = kf.lat
+    boat.lon = kf.lon
+    boat.speed = kf.z[2][0]
+    boat.heading = kf.z[3][0]
+
+def predict_kf(kf):
+    kf.predtict(time.time())
+
+    boat.lat = kf.lat
+    boat.lon = kf.lon
+    boat.speed = kf.z[2][0]
+    boat.heading = kf.z[3][0]
     
-    return kf
-
 
 def start_vehicles_simulation():
     # Parameter settings

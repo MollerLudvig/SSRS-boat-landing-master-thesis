@@ -2,3 +2,7 @@ pymavlink
 numpy
 redis
 matplotlib
+pyproj
+collections
+bisect
+time
