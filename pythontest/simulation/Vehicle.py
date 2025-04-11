@@ -11,8 +11,10 @@ class Vehicle():
         self.heading = None
         self.vx = None
         self.vy = None
+        self.vz = None
         self.speed = None
         self.altitude = None
+        self.data = {}
 
     def set_parameter(self, param_name, value):
         """Sets an ArduPilot parameter via MAVLink"""

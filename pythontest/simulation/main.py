@@ -1,4 +1,5 @@
 from multiprocessing import Process
+import matplotlib.pyplot as plt
 # from threading import Thread
 
 import tester

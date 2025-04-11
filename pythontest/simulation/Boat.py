@@ -7,6 +7,8 @@ from Vehicle import Vehicle
 class Boat(Vehicle):
     def __init__(self, connection):
         self.connection = connection
+        self.deck_lat = None
+        self.deck_lon = None
         super().__init__(connection)
 
 

@@ -23,7 +23,7 @@ class Drone(Vehicle):
                 target_system=self.connection.target_system,
                 target_component=self.connection.target_component,
                 seq=i,
-                frame=mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT, # MAV_FRAME_GLOBAL_INT
+                frame=mavutil.mavlink.MAV_FRAME_GLOBAL_INT, # MAV_FRAME_GLOBAL_RELATIVE_ALT_INT
                 command=mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
                 current=0,
                 autocontinue=1,
