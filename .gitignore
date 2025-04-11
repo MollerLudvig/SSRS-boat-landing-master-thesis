@@ -36,7 +36,7 @@ req.txt
 # Ignore environment files
 .env
 
-**.BIN
+# **.BIN
 **.bin
 **.parm
 **.tlog
@@ -45,6 +45,7 @@ req.txt
 # simulation/
 # .txt
 
+logs/
 
 MissionHandler/
 *arm
