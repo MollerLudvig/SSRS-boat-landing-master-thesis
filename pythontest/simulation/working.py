@@ -72,6 +72,8 @@ def tester():
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     altitude_error_gain = 0.225
+    speed_gain = 0.2
+    drone_stall_speed = 12
     started_descent = False # Bool to keep track when descent is started
 
     drone_altitudes = []
@@ -138,17 +140,20 @@ def tester():
             drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
             # -boat_length because the actual landing spot is not where the boat coordinates are read
 
-            print(f"P1 distance_ {P1_distance}")
-            print(f"Drone distance: {drone_distance_to_boat}")
-
             # Change boat speed depending on how far the drone is 
             # since drone speed could not be changed directly in gazebo
+
             # CHANGE FOR REAL WORLD: Set drone speed and not boat speed
-            if drone_distance_to_boat > P1_distance+10:
-                boat.set_speed(drone.speed - catchup_speed)
+            dist_behind_P1 = drone_distance_to_boat - P1_distance
+            wanted_boat_speed = drone.speed - dist_behind_P1*speed_gain
+            boat.set_speed(max(drone_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
             
-            else:
-                boat.set_speed(drone.speed)
+            # Send boat speed, drone dist to boat, P2/P1 dist to boat and stall speed to missionhandler
+
+            print(f"P1 distance_ {P1_distance}")
+            print(f"Drone distance: {drone_distance_to_boat}")
+            print(f"Desired boat speed: {max(drone_stall_speed, wanted_boat_speed)}")
+            print(f"Actual boat speed: {boat.speed}")
 
             # Move boat
             boat_target_lat = boat.lat + 0.002
@@ -178,7 +183,7 @@ def tester():
 
             # If drone is behind P2 + lookahead it should just keep flying towards the boat at cruise_altitude
             if (drone_distance_to_boat > P2_distance + descent_lookahead) and (not started_descent):
-                boat.set_speed(drone.speed - catchup_speed)
+                boat.set_speed(desired_boat_speed)
 
                 print(f"P2 distance: {P2_distance}")
                 print(f"Drone distance: {drone_distance_to_boat}")
