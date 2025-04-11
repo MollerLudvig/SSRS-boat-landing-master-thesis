@@ -39,6 +39,10 @@ async def starter(beacon = False, AIS = False, camera = False, simulation = True
     if verbose:
         print("Connected to drone and boat", flush=True)
 
+    #get an innitial position
+    await drone.gat_global_position(once = True)
+    await boat.gat_global_position(once = True)
+
     # Create tasks for getting data and running main loop
     droneTask = asyncio.create_task(drone.gat_global_position())
     boatTask = asyncio.create_task(boat.gat_global_position())
@@ -49,6 +53,7 @@ async def starter(beacon = False, AIS = False, camera = False, simulation = True
 
     # Run concurrently forever (or until one fails/stops)
     await asyncio.gather(droneTask, boatTask, testerTask)
+    # await working.tester(drone, boat, simulation)
 
 
 def innit_filter(beacon, AIS, camera, simulation):

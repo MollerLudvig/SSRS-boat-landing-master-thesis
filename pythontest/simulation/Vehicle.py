@@ -14,6 +14,7 @@ class Vehicle():
         self.vy = None
         self.speed = None
         self.altitude = None
+        self.data = {}
 
     def set_parameter(self, param_name, value):
         """Sets an ArduPilot parameter via MAVLink"""
@@ -67,7 +68,16 @@ class Vehicle():
     def get_message(self, msg):
         return self.connection.recv_match(type=msg, blocking=True)
     
-    async def gat_global_position(self):
+    def flush_messages(self):
+        while True:
+            msg = self.connection.recv_msg()
+            if msg is None:
+                break
+
+    def get_lat(self):
+        return 
+    
+    async def gat_global_position(self, once = False):
         """Get the global position of the vehicle."""
         while True:
             pos_msg = self.get_message('GLOBAL_POSITION_INT')
@@ -78,17 +88,10 @@ class Vehicle():
             self.vy = pos_msg.vy /100
             self.speed = np.sqrt(self.vx**2+self.vy**2)
             self.altitude = pos_msg.alt/1000
-            await asyncio.sleep(1)
-
-
-    def flush_messages(self):
-        while True:
-            msg = self.connection.recv_msg()
-            if msg is None:
+            sleep(1)
+            if once:
+                print(f"lat: {self.lat}, lon: {self.lon}")
                 break
-
-    def get_lat(self):
-        return 
 
 
 

@@ -7,6 +7,8 @@ from Vehicle import Vehicle
 class Boat(Vehicle):
     def __init__(self, connection):
         self.connection = connection
+        self.deck_lat = None
+        self.deck_lon = None
         super().__init__(connection)
 
 
@@ -36,8 +38,3 @@ class Boat(Vehicle):
         mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 0, alt
     )
     
-
-
-
-
-
