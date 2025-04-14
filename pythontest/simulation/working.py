@@ -12,7 +12,7 @@ from Boat import Boat
 from Guidance.kalman_OOSM import KalmanFilterXY
 
 R = 6371000 # Earth radius
-
+verbose = True
 
 
 # Establish connection
@@ -33,6 +33,8 @@ Gr = 1/20 # Glide ratio
 
 # Init redisclient
 rc = RedisClient()
+if verbose:
+    print("Redis client initialized")
 # For missionhandler abort condition
 rc.add_stream_message("needed_glide_ratio", Gr)
 
@@ -70,7 +72,15 @@ def tester():
 
     
         if i == 0:
-            kf = innit_filter(boat)
+            kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
+            if verbose:
+                print(f"Boat initial position: {boat.deck_lat}, {boat.deck_lon}")
+                print(f"Boat initial speed: {boat.speed}")
+                print(f"Boat initial heading: {boat.heading}")
+                print(f"Boat initial lat: {boat.lat}")
+                print(f"Boat initial lon: {boat.lon}")
+                print(f"Boat initial deck lat: {boat.deck_lat}")
+                print(f"Boat initial deck lon: {boat.deck_lon}")
 
 
         # Simulateing sparse updates
@@ -316,9 +326,9 @@ def innit_filter():
 
     return kf
 
-def update_boat_position(kf):
+def update_boat_position(kf, boat):
     boat.update_possition_mavlink()
-    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)''
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
     z = np.array([[boat.deck_lat], [boat.deck_lon], [boat.vx], [boat.heading]])
 
     #update filter with new position
@@ -326,16 +336,16 @@ def update_boat_position(kf):
 
     boat.lat = kf.lat
     boat.lon = kf.lon
-    boat.speed = kf.z[2][0]
-    boat.heading = kf.z[3][0]
+    boat.speed = kf.x[2][0]
+    boat.heading = kf.x[3][0]
 
 def predict_kf(kf):
     kf.predtict(time.time())
 
     boat.lat = kf.lat
     boat.lon = kf.lon
-    boat.speed = kf.z[2][0]
-    boat.heading = kf.z[3][0]
+    boat.speed = kf.x[2][0]
+    boat.heading = kf.x[3][0]
     
 
 def start_vehicles_simulation():
@@ -349,20 +359,27 @@ def start_vehicles_simulation():
     drone.set_parameter("TECS_VERT_ACC", 8) # Default: 7
     drone.set_parameter("TECS_INTEG_GAIN", 0.5) # Default: 0.3
 
-    sleep(5)
+    sleep(2)
 
+    print("Setting modes")
     # Set modes
     drone.set_mode("FBWB")
     boat.set_mode("GUIDED")
 
+    print("Arming vehicles")
+
     # Arm vehicles
     drone.arm_vehicle()
-    sleep(3)
+    sleep(1)
     boat.arm_vehicle()
-    sleep(5)
+    sleep(2)
+
+    print("Taking off vehicles")
 
     # Takeoff vehicles
     boat.takeoff(3)
-    sleep(10)
+    sleep(1)
     drone.set_servo(3, 1800)
-    sleep(3)
+    sleep(2)
+
+    print("Takeoff complete")
