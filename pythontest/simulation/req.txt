@@ -3,6 +3,3 @@ numpy
 redis
 matplotlib
 pyproj
-collections
-bisect
-time
