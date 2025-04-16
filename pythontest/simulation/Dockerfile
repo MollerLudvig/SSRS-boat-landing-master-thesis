@@ -16,4 +16,9 @@ RUN curl -L -o ./redis_communication.py https://raw.githubusercontent.com/SSRS-I
 # Copy all source files
 COPY . .
 
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+RUN ls -la /code
+
+
 ENTRYPOINT ["python", "main.py"]
