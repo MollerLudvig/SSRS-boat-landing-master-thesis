@@ -73,7 +73,6 @@ fig, ax = plt.subplots(figsize=(10, 6), subplot_kw={"projection": osm_tiles.crs}
 # Set map extent
 ax.set_extent([min([dfPlot["lon"].min(), min(filtered_lons)]), max([dfPlot["lon"].max(), max(filtered_lons)]),
                 min([dfPlot["lat"].min(), min(filtered_lats)]), max([dfPlot["lat"].max(), max(filtered_lats)])], crs=ccrs.PlateCarree())
-            #    dfPlot["Latitude"].min(), dfPlot["Latitude"].max()], crs=ccrs.PlateCarree())
 
 # Add OSM tiles (detailed coastline & islands)
 ax.add_image(osm_tiles, 18)  # Higher zoom level = more detail
