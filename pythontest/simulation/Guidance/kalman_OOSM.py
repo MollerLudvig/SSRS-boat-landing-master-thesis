@@ -46,11 +46,11 @@ class KalmanFilterXY:
             self.last_time = timestamp
 
         # Update the state transition matrix F
-        dx = self.x[2,0] * np.sin(self.x[3,0]) * dt
-        dy = self.x[2,0] * np.cos(self.x[3,0]) * dt
-        print(f"dx: {dx}, dy: {dy}")
-        print(f"dt: {dt}")
-        print(f"v: {self.x[2,0]}, psi: {self.x[3,0]}")
+        dx = np.sin(self.x[3,0]) * dt
+        dy = np.cos(self.x[3,0]) * dt
+        # print(f"dx: {dx}, dy: {dy}")
+        # print(f"dt: {dt}")
+        # print(f"v: {self.x[2,0]}, psi: {self.x[3,0]}")
         self.F = np.array([
             [1, 0, dx, 0, 0],
             [0, 1, dy, 0, 0],
@@ -170,14 +170,15 @@ class KalmanFilterXY:
         """Update with AIS measurement ([x, y, speed, yaw])."""
         if R_AIS is None:
             # R_AIS = np.eye(4) * 0.01
-            R_AIS = np.array([[1, 0, 0, 0],
-                              [0, 1, 0, 0],
-                              [0, 0, 1, 0],
-                              [0, 0, 0, 1]]) * 0.01
+            R_AIS = np.array([[10, 0, 0, 0],
+                              [0, 10, 0, 0],
+                              [0, 0, 10, 0],
+                              [0, 0, 0, 10]]) * 0.001
+
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
-    def update_w_latlon(self,z, timestamp, R_AIS=None):
+    def update_w_latlon(self, z, timestamp, R_AIS=None):
         """Update with AIS measurement ([lat, lon, speed, yaw])."""
 
         # Substitute lat lon with x, y in measurment vector
