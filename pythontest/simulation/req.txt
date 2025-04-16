@@ -3,3 +3,4 @@ numpy
 redis
 matplotlib
 pyproj
+asyncio
