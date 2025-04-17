@@ -58,6 +58,36 @@ class Plotter:
             "line1": line1_alterr
         }
 
+        # Initialize filter plot
+        fig_filter, ax_filter = plt.subplots()
+        line1_filter, = ax_filter.plot([], [], 'ro-', label='Filtered trajectory')
+        line2_filter, = ax_filter.plot([], [], 'bo-', label='Raw trajectory')
+        ax_filter.set_xlabel("Longitude")
+        ax_filter.set_ylabel("Latitude")
+        ax_filter.legend()
+
+        self.plots["filter_xy"] = {
+            "fig": fig_filter,
+            "ax": ax_filter,
+            "line1": line1_filter,
+            "line2": line2_filter
+        }
+
+        # Initialize filter plot lat long
+        fig_filter_latlon, ax_filter_latlon = plt.subplots()
+        line1_filter_latlon, = ax_filter_latlon.plot([], [], 'ro-', label='Filtered trajectory')
+        line2_filter_latlon, = ax_filter_latlon.plot([], [], 'bo-', label='Raw trajectory')
+        ax_filter_latlon.set_xlabel("Latitude")
+        ax_filter_latlon.set_ylabel("Longitude")
+        ax_filter_latlon.legend()
+
+        self.plots["filter_latlon"] = {
+            "fig": fig_filter_latlon,
+            "ax": ax_filter_latlon,
+            "line1": line1_filter_latlon,
+            "line2": line2_filter_latlon
+        }
+    
     def plot_trajectory(self):
         try:
             data = self.plots["trajectory"]
@@ -131,6 +161,58 @@ class Plotter:
             ax.relim()
             ax.autoscale_view()
             ax.set_title(f"GLide ration: 1/{int(1/Gr)}")
+
+            plt.draw()
+            plt.pause(0.01)
+
+        except Exception as e:
+            print("Waiting for stream: ", e)
+        
+
+    def plot_filter_xy(self):
+        try:
+            data = self.plots["filter_xy"]
+            ax = data["ax"]
+            line1 = data["line1"]
+            # line2 = data["line2"]
+
+            kf_x, kf_y = self.boat_data["kf_x"], self.boat_data["kf_y"]
+
+            line1.set_xdata(kf_x)
+            line1.set_ydata(kf_y)
+
+
+            # line2.set_xdata(raw_xs)
+            # line2.set_ydata(raw_ys)
+
+            ax.relim()
+            ax.autoscale_view()
+            ax.set_title(f"Filtered trajectory")
+
+            plt.draw()
+            plt.pause(0.01)
+
+        except Exception as e:
+            print("Waiting for stream: ", e)
+
+    def plot_filter_latlon(self):
+        try:
+            data = self.plots["filter_latlon"]
+            ax = data["ax"]
+            line1 = data["line1"]
+            # line2 = data["line2"]
+
+            kf_lat, kf_lon = self.boat_data["kf_lat"], self.boat_data["kf_lon"]
+
+            line1.set_xdata(kf_lat)
+            line1.set_ydata(kf_lon)
+
+            # line2.set_xdata(raw_xs)
+            # line2.set_ydata(raw_ys)
+
+            ax.relim()
+            ax.autoscale_view()
+            ax.set_title(f"Filtered trajectory")
 
             plt.draw()
             plt.pause(0.01)
