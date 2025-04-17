@@ -8,6 +8,8 @@ class Vehicle():
         self.connection = connection
         self.lat = None
         self.lon = None
+        self.lat_sim = None
+        self.lon_sim = None
         self.heading = None
         self.vx = None
         self.vy = None
@@ -89,6 +91,8 @@ class Vehicle():
         pos_msg = self.get_message('GLOBAL_POSITION_INT')
         self.lat = pos_msg.lat / 1e7
         self.lon = pos_msg.lon / 1e7
+        self.lat_sim = pos_msg.lat / 1e7
+        self.lon_sim = pos_msg.lon / 1e7
         self.heading = pos_msg.hdg / 100
         self.vx = pos_msg.vx / 100
         self.vy = pos_msg.vy / 100
