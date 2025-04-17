@@ -11,56 +11,62 @@ from Drone import Drone
 from Boat import Boat
 from Guidance.kalman_OOSM import KalmanFilterXY
 
-R = 6371000 # Earth radius
-verbose = True
-
-
-# Establish connection
-drone_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
-boat_connection = mavutil.mavlink_connection('udp:127.0.0.1:14560')
-
-drone_connection.wait_heartbeat()
-boat_connection.wait_heartbeat()
-
-drone = Drone(drone_connection)
-boat = Boat(boat_connection)
-
-drone_msg = drone.get_message('HEARTBEAT')
-boat_msg = boat.get_message('HEARTBEAT')
-
-Gr = 1/20 # Glide ratio
-
-
-# Init redisclient
-rc = RedisClient()
-if verbose:
-    print("Redis client initialized")
-# For missionhandler abort condition
-rc.add_stream_message("needed_glide_ratio", Gr)
-
-# NOTE: Can use descent_lookahead only for starting early (before P2), 
-# then not look forward while already in descent
-descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
-# "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
-# Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
-# So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
-
-cruise_altitude = 18 # In meters, 
-aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
-altitude_error_gain = 0.225
-started_descent = False # Bool to keep track when descent is started
-
-drone_altitudes = []
-drone_coordinates = []
-z_wanteds = []
-needed_sink_rates = []
-wanted_sink_rates = []
-actual_sink_rates = []
-xs = [0]
-
 def tester():
-    start_vehicles_simulation()
+    R = 6371000 # Earth radius
+    verbose = True
+
+    # Establish connection
+    if verbose:
+        print("Connecting to vehicles")
+    drone_connection = mavutil.mavlink_connection('udp:127.0.0.1:14550')
+    boat_connection = mavutil.mavlink_connection('udp:127.0.0.1:14560')
+
+    if verbose:
+        print("Waiting for heartbeat")
+    drone_connection.wait_heartbeat()
+    boat_connection.wait_heartbeat()
+    if verbose:
+        print("Heartbeat received")
+
+    drone = Drone(drone_connection)
+    boat = Boat(boat_connection)
+
+    drone_msg = drone.get_message('HEARTBEAT')
+    boat_msg = boat.get_message('HEARTBEAT')
+
+    Gr = 1/20 # Glide ratio
+
+
+    # Init redisclient
+    rc = RedisClient()
+    if verbose:
+        print("Redis client initialized")
+    # For missionhandler abort condition
+    rc.add_stream_message("needed_glide_ratio", Gr)
+    rc.add_stream_message("stage", "started")
+    # NOTE: Can use descent_lookahead only for starting early (before P2), 
+    # then not look forward while already in descent
+    descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+    # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
+    # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration hase 1 sec delay
+    # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
+
+    cruise_altitude = 18 # In meters, 
+    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
+    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+    altitude_error_gain = 0.225
+    started_descent = False # Bool to keep track when descent is started
+
+    drone_altitudes = []
+    drone_coordinates = []
+    z_wanteds = []
+    needed_sink_rates = []
+    wanted_sink_rates = []
+    actual_sink_rates = []
+    xs = [0]
+
+
+    start_vehicles_simulation(drone, boat)
 
     i = 0
     # Main loop
