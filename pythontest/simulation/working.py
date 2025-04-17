@@ -44,6 +44,7 @@ def tester():
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     rc.add_stream_message("stage", "started")
+
     # NOTE: Can use descent_lookahead only for starting early (before P2), 
     # then not look forward while already in descent
     descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
@@ -69,16 +70,17 @@ def tester():
     start_vehicles_simulation(drone, boat)
 
     i = 0
+    actual_itterator = 0
     # Main loop
     while True:
 
         drone.update_possition_mavlink()
         boat.update_possition_mavlink()
-        boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
-
-    
-        if i == 0:
-            kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
+        boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)    
+        
+        if actual_itterator == 0:
+            # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
+            kf = innit_filter(boat, boat_length)
             if verbose:
                 print(f"Boat initial position: {boat.deck_lat}, {boat.deck_lon}")
                 print(f"Boat initial speed: {boat.speed}")
@@ -90,11 +92,27 @@ def tester():
 
 
         # Simulateing sparse updates
-        if i%3 == 0:
-            update_boat_position(kf, boat)
+        if actual_itterator%3 == 0:
+            update_boat_position(kf, boat, boat_length)
             # Update boat position 
         else:
-            predict_kf(kf)
+            predict_kf(kf, boat, boat_length)
+
+        actual_itterator += 1
+        # Save kf state in CSV
+        boat.data.update({"kf_x": kf.x[0][0],
+                          "kf_y": kf.x[1][0],
+                          "kf_lat": kf.lat,
+                          "kf_lon": kf.lon,
+                          "kf_speed": kf.x[2][0],
+                          "kf_heading": kf.x[3][0],
+                          "real_heading": boat.heading,
+                          "real_lat": boat.lat_sim,
+                          "real_lon": boat.lon_sim})
+        
+        # if verbose:
+        #     print(f"boat data: {boat.data}")
+        #     print(f"Heading: {boat.heading}")
 
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
@@ -139,8 +157,8 @@ def tester():
                 boat.set_speed(drone.speed)
 
             # Move boat
-            boat_target_lat = boat.lat + 0.002
-            boat_target_lon = boat.lon
+            boat_target_lat = boat.lat_sim + 0.002
+            boat_target_lon = boat.lon_sim
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
         # Land on boat
@@ -149,8 +167,8 @@ def tester():
             # Move boat
             print(f"Drone altitude: {drone.altitude}")
             print("\n")
-            boat_target_lat = boat.lat + 0.002
-            boat_target_lon = boat.lon
+            boat_target_lat = boat.lat_sim + 0.002
+            boat_target_lon = boat.lon_sim
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
             # Calculate where P2 is
@@ -282,6 +300,8 @@ def tester():
                                     [boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
 
         elif drone.stage == "diversion":
+            print("DIVERTING", flush=True)
+
             # Allow going into follow mode and starting a new descent
             started_descent = False
             # Implement actual diversion manuever and not just RTL for 3 sec
@@ -301,8 +321,8 @@ def tester():
         else:
 
             # Move boat
-            boat_target_lat = boat.lat + 0.002
-            boat_target_lon = boat.lon
+            boat_target_lat = boat.lat_sim + 0.002
+            boat_target_lon = boat.lon_sim
             boat.set_speed(desired_boat_speed)
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
@@ -316,7 +336,7 @@ def tester():
 
 
 
-def innit_filter():
+def innit_filter(boat, boat_length):
     # Get initial position of boat
     boat.update_possition_mavlink()
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
@@ -328,14 +348,14 @@ def innit_filter():
     boat.y = 0
 
     #innitiate kf filter
-    kf = KalmanFilterXY(boat.inital_lat, boat.inital_lon, boat.x, boat.y, boat.xdot, boat.ydot)
+    kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.lat, init_lon = boat.lon)
 
     return kf
 
-def update_boat_position(kf, boat):
+def update_boat_position(kf, boat, boat_length):
     boat.update_possition_mavlink()
-    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
-    z = np.array([[boat.deck_lat], [boat.deck_lon], [boat.vx], [boat.heading]])
+
+    z = np.array([[boat.lat], [boat.lon], [boat.vx], [boat.heading]])
 
     #update filter with new position
     kf.update_w_latlon(z, time.time())
@@ -343,18 +363,22 @@ def update_boat_position(kf, boat):
     boat.lat = kf.lat
     boat.lon = kf.lon
     boat.speed = kf.x[2][0]
-    boat.heading = kf.x[3][0]
+    # boat.heading = kf.x[3][0]
 
-def predict_kf(kf):
-    kf.predtict(time.time())
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
+
+def predict_kf(kf, boat, boat_length):
+    kf.predict(time.time())
 
     boat.lat = kf.lat
     boat.lon = kf.lon
     boat.speed = kf.x[2][0]
-    boat.heading = kf.x[3][0]
+    # boat.heading = kf.x[3][0]
+
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
     
 
-def start_vehicles_simulation():
+def start_vehicles_simulation(drone, boat):
     # Parameter settings
     drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
     drone.set_parameter("TECS_TIME_CONST", 3.0) # Default: 5.0
