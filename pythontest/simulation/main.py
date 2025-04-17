@@ -5,6 +5,7 @@ import asyncio
 import tester
 import working
 import cookin
+import real_life_testing
 
 # if __name__ == '__main__':
 #     Process(target=working.tester).start()

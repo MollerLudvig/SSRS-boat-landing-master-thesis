@@ -19,6 +19,19 @@ while True:
         Gr = rc.get_latest_stream_message("needed_glide_ratio")[1]
         if Gr > 0.25: 
             rc.add_stream_message(stage_stream, "diversion") 
+
     if wanted_stage == "follow":
         # Read P1 dist, drone dist, boat speed and figure out if diversion is needed
-        None
+        follow_diversion_data = rc.get_latest_stream_message("follow diversion")
+
+        drone_distance_to_boat = follow_diversion_data["drone_distance"]
+        stall_speed = follow_diversion_data["stall_speed"]
+        P2_distance = follow_diversion_data["P2_distancec"]
+        boat_speed = follow_diversion_data["boat_speed"]
+
+        if boat_speed < stall_speed and drone_distance_to_boat < (P2_distance + 5):
+            rc.add_stream_message(stage_stream, "diversion")
+    
+    if wanted_stage == "FBWB":
+        rc.add_stream_message(stage_stream, "FBWB")
+
