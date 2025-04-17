@@ -74,9 +74,6 @@ class Vehicle():
             if msg is None:
                 break
 
-    def get_lat(self):
-        return 
-
 
 
 

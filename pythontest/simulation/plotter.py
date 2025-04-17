@@ -47,7 +47,7 @@ class Plotter:
 
         # Initialize altitude error plot
         fig_alterr, ax_alterr = plt.subplots()
-        line1_alterr, = ax_alterr.plot([], [], 'go-', label='Actual altitude - Wanted altitude')
+        line1_alterr, = ax_alterr.plot([], [], 'go-', label='Altitude error')
         ax_alterr.set_xlabel("Distance since descent start (m)")
         ax_alterr.set_ylabel("Altitude error (m)")
         ax_alterr.legend()
@@ -65,7 +65,6 @@ class Plotter:
             line1 = data["line1"]
             line2 = data["line2"]
 
-            # [xs, altitudes, boat_altitude, z_wanteds] = self.rc.get_latest_stream_message("traj_plot")[1]
             xs, altitudes, z_wanteds, Gr = self.drone_data["xs"], self.drone_data["altitude"], self.drone_data["z_wanted"], self.drone_data["Gr"]
             boat_altitude = self.boat_data["altitude"]
 
@@ -130,7 +129,7 @@ class Plotter:
 
             ax.relim()
             ax.autoscale_view()
-            ax.set_title(f"GLide ration: 1/{int(1/Gr)}")
+            ax.set_title(f"Glide ratio: 1/{int(1/Gr)}")
 
             plt.draw()
             plt.pause(0.01)
@@ -147,9 +146,6 @@ class Plotter:
             self.plot_trajectory()
             self.plot_sink_rate()
             self.plot_altitude_error()
-
-            sleep(1)
-
 
 if __name__ == "__main__":
     plotter = Plotter()

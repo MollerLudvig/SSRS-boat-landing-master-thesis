@@ -154,12 +154,8 @@ def tester():
             
             # Send boat speed, drone dist to boat, P2/P1 dist to boat and stall speed to missionhandler
 
-            print(f"P1 distance_ {P1_distance}")
-            print(f"Drone distance: {drone_distance_to_boat}")
-            print(f"Desired boat speed: {max(drone_stall_speed, wanted_boat_speed)}")
-            print(f"Actual boat speed: {boat.speed}")
-            # -boat_length because the actual landing spot is not where the boat coordinates are read
-
+<<<<<<< HEAD
+=======
             # Change boat speed depending on how far the drone is 
             # since drone speed could not be changed directly in gazebo
 
@@ -170,6 +166,7 @@ def tester():
             
             # Send boat speed, drone dist to boat, P2/P1 dist to boat and stall speed to missionhandler
 
+>>>>>>> ba61275 (Speed controller tuning)
             print(f"P1 distance_ {P1_distance}")
             print(f"Drone distance: {drone_distance_to_boat}")
             print(f"Desired boat speed: {max(drone_stall_speed, wanted_boat_speed)}")
@@ -203,7 +200,6 @@ def tester():
 
             # If drone is behind P2 + lookahead it should just keep flying towards the boat at cruise_altitude
             if (drone_distance_to_boat > P2_distance + descent_lookahead) and (not started_descent):
-                boat.set_speed(desired_boat_speed)
                 boat.set_speed(desired_boat_speed)
 
                 print(f"P2 distance: {P2_distance}")
