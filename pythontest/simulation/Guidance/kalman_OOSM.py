@@ -3,6 +3,8 @@ import time
 from collections import deque
 import bisect
 from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
+# from coordinate_conv import latlon_to_xy, xy_to_latlon
+
 
 
 class KalmanFilterXY:
@@ -70,6 +72,9 @@ class KalmanFilterXY:
         dt2 = dt ** 2
         dt3 = dt ** 3 / 2
         dt4 = dt ** 4 / 4
+
+        # print(f"Process noise variance: {self.process_noise_variance}")
+
         # Q = self.process_noise_variance * np.array([
         #     [dt*100, 0,0, 0, 0,],
         #     [0, dt*100, 0, 0, 0],
