@@ -229,6 +229,8 @@ class Plotter:
             self.plot_trajectory()
             self.plot_sink_rate()
             self.plot_altitude_error()
+            self.plot_filter_xy()
+            self.plot_filter_latlon()
 
             sleep(1)
 
