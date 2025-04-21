@@ -8,9 +8,9 @@ from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
 verbose = False
 
 class KalmanFilterXY:
-    def __init__(self, v = 0, psi = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+    def __init__(self, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
-        self.x = np.array([[0], [0], [v], [psi], [0]])  # State: [x, y, speed, yaw, yaw rate]
+        self.x = np.array([[0], [0], [v], [heading]])  # State: [x, y, speed, yaw]
         self.init_lat = init_lat
         self.init_lon = init_lon
         self.lat = None
@@ -24,13 +24,13 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0, 0],
-                                  [0, 1, 0, 0, 0]])
+        self.H_camera = np.array([[1, 0, 0, 0],
+                                  [0, 1, 0, 0]])
         
-        self.H_AIS = np.array([[1, 0, 0, 0, 0], # x
-                               [0, 1, 0, 0, 0], # y
-                               [0, 0, 1, 0, 0], # speed
-                               [0, 0, 0, 1, 0]])# yaw
+        self.H_AIS = np.array([[1, 0, 0, 0], # x
+                               [0, 1, 0, 0], # y
+                               [0, 0, 1, 0], # speed
+                               [0, 0, 0, 1]])# yaw
         
         # State transition matrix (updated in predict)
         self.F = np.eye(self.n)
@@ -61,11 +61,10 @@ class KalmanFilterXY:
             print("\n")
 
         self.F = np.array([
-            [1, 0, dx, 0, 0],
-            [0, 1, dy, 0, 0],
-            [0, 0, 1, 0, 0],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 0]
+            [1, 0, dx, 0],
+            [0, 1, dy, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
         ])
 
         # Predict state
@@ -92,11 +91,10 @@ class KalmanFilterXY:
         #     [0, 0, 0, dt2, dt]
         # ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
         Q = self.process_noise_variance * np.array([
-            [10, 0, 0, 0, 0],
-            [0, 10, 0, 0, 0],
-            [0, 0, 100, 0, 0],
-            [0, 0, 0, 100, 0],
-            [0, 0, 0, 0, 10]
+            [10, 0, 0, 0],
+            [0, 10, 0, 0],
+            [0, 0, 100, 0],
+            [0, 0, 0, 100]
         ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
 
         # Update state covariance
