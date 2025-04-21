@@ -45,7 +45,6 @@ class KalmanFilterXY:
             dt = timestamp - self.last_time
             if dt <= 0.001:  # Ignore very small time steps
                 return
-            self.last_time = timestamp
 
         # Update the state transition matrix F
         thetaRad = np.deg2rad(self.x[3, 0])
@@ -101,7 +100,7 @@ class KalmanFilterXY:
         self.P = self.F @ self.P @ self.F.T + Q
 
         # Store state in buffer
-        self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
+        self.state_buffer.append((timestamp, self.x.copy(), self.P.copy()))
 
         # Print debug information
         if verbose:
@@ -113,6 +112,9 @@ class KalmanFilterXY:
             print(f"x: {self.x}, P: {self.P}")
             print(f"lat: {self.lat}, lon: {self.lon}")
             print("\n")
+
+        # Update last time
+        self.last_time = timestamp
 
     def update(self, z, H, R, timestamp):
         """Update the filter with a new measurement at a given timestamp."""
