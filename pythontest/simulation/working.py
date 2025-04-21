@@ -113,9 +113,8 @@ def tester():
                           "real_lat": boat.lat_sim,
                           "real_lon": boat.lon_sim})
         
-        # if verbose:
-        #     print(f"boat data: {boat.data}")
-        #     print(f"Heading: {boat.heading}")
+        if verbose:
+             print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
 
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]

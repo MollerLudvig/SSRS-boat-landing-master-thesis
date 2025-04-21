@@ -5,7 +5,7 @@ import bisect
 from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
 # from coordinate_conv import latlon_to_xy, xy_to_latlon
 
-
+verbose = False
 
 class KalmanFilterXY:
     def __init__(self, v = 0, psi = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
@@ -48,11 +48,18 @@ class KalmanFilterXY:
             self.last_time = timestamp
 
         # Update the state transition matrix F
-        dx = np.sin(self.x[3,0]) * dt
-        dy = np.cos(self.x[3,0]) * dt
-        # print(f"dx: {dx}, dy: {dy}")
-        # print(f"dt: {dt}")
-        # print(f"v: {self.x[2,0]}, psi: {self.x[3,0]}")
+        thetaRad = np.deg2rad(self.x[3, 0])
+
+        dx = np.sin(thetaRad) * dt
+        dy = np.cos(thetaRad) * dt
+
+        if verbose:
+            print(f"dx: {dx}, dy: {dy}")
+            print(f"dt: {dt}")
+            print(f"Heading: {self.x[3,0]}")
+            print(f"sepeed: {self.x[2,0]}")
+            print("\n")
+
         self.F = np.array([
             [1, 0, dx, 0, 0],
             [0, 1, dy, 0, 0],
@@ -62,6 +69,8 @@ class KalmanFilterXY:
         ])
 
         # Predict state
+        if verbose:
+            x_old = self.x
         self.x = self.F @ self.x
 
         # Set lat lon
@@ -96,11 +105,24 @@ class KalmanFilterXY:
         # Store state in buffer
         self.state_buffer.append((self.last_time, self.x.copy(), self.P.copy()))
 
+        # Print debug information
+        if verbose:
+            print("Predict step:")
+            print(f"dt: {dt}, last_time: {self.last_time}, timestamp: {timestamp}")
+            print(f"Process nice Q: {Q}")
+            print(f"F: {self.F}")
+            print(f"old x: {x_old}")
+            print(f"x: {self.x}, P: {self.P}")
+            print(f"lat: {self.lat}, lon: {self.lon}")
+            print("\n")
+
     def update(self, z, H, R, timestamp):
         """Update the filter with a new measurement at a given timestamp."""
         if timestamp < self.last_time:  # Out-of-sequence measurement detected
             self._handle_OOSM(z, H, R, timestamp)
             return
+        else:
+            self.last_time = timestamp
 
         y = z - H @ self.x  # Innovation
         S = H @ (self.P @ H.T) + R  # Innovation covariance
@@ -111,6 +133,12 @@ class KalmanFilterXY:
 
         # Set lat lon
         self.lat, self.lon = xy_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
+
+        if verbose:
+            print("Update step:")
+            print(f"z: {z}, x: {self.x}, P: {self.P}")
+            print(f"lat: {self.lat}, lon: {self.lon}")
+            print("\n")
 
     def _handle_OOSM(self, z, H, R, timestamp):
         """
@@ -165,26 +193,26 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(temp_list, maxlen=self.measurement_buffer.maxlen)
 
     def update_camera(self, z, timestamp, R_camera=None):
-        """Update with a camera measurement ([x, y])."""
+        """Update with a camera measurement (z = [[x], [y]])."""
         if R_camera is None:
             R_camera = np.eye(2) * 0.01
         self._insert_measurement(z, self.H_camera, R_camera, timestamp)
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
-        """Update with AIS measurement ([x, y, speed, yaw])."""
+        """Update with AIS measurement z = [[x], [y], [speed], [heading (degrees)]."""
         if R_AIS is None:
             # R_AIS = np.eye(4) * 0.01
             R_AIS = np.array([[10, 0, 0, 0],
                               [0, 10, 0, 0],
                               [0, 0, 10, 0],
-                              [0, 0, 0, 10]]) * 0.001
+                              [0, 0, 0, 1]]) * 0.001
 
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
     def update_w_latlon(self, z, timestamp, R_AIS=None):
-        """Update with AIS measurement ([lat, lon, speed, yaw])."""
+        """ Assume z = [[lat], [lon], [speed], [heading (degrees)]]"""
 
         # Substitute lat lon with x, y in measurment vector
         z[0][0], z[1][0] = latlon_to_xy(z[0][0], z[1][0], self.init_lat, self.init_lon)

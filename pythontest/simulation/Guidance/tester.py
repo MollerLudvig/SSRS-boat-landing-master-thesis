@@ -51,7 +51,7 @@ while True:
     # Update with AIS measurement
     while t > df.iloc[0]["timestamp_unix"]:
         # kf.update_AIS(np.array([[df.iloc[0]["x"]], [df.iloc[0]["y"]], [df.iloc[0]["speed[m/s]"]], [np.radians(df.iloc[0]["course"])]]) , df.iloc[0]["timestamp_unix"])
-        kf.update_w_latlon(np.array([[df.iloc[0]["lat"]], [df.iloc[0]["lon"]], [df.iloc[0]["speed[m/s]"]], [np.radians(df.iloc[0]["heading"])]]) , df.iloc[0]["timestamp_unix"])
+        kf.update_w_latlon(np.array([[df.iloc[0]["lat"]], [df.iloc[0]["lon"]], [df.iloc[0]["speed[m/s]"]], [df.iloc[0]["heading"]]]) , df.iloc[0]["timestamp_unix"])
         df.drop(index=df.index[0], axis=0, inplace=True)
         if df.empty:
             break
