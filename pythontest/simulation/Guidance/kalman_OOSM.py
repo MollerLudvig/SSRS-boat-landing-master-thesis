@@ -220,6 +220,7 @@ class KalmanFilterXY:
         # Convert from an offset measurement to a global xy position
         z[0][0], z[1][0] = self._local_to_global(z[0][0], z[1][0], drone_lat, drone_lon, drone_heading)
         
+        # Add the measurement to the buffer and update the filter
         self._insert_measurement(z, self.H_camera, R_camera, timestamp)
         self.update(z, self.H_camera, R_camera, timestamp)
 
