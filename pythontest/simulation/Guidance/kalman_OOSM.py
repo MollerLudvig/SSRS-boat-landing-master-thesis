@@ -192,10 +192,34 @@ class KalmanFilterXY:
         bisect.insort(temp_list, new_entry, key=lambda x: x[0])
         self.measurement_buffer = deque(temp_list, maxlen=self.measurement_buffer.maxlen)
 
-    def update_camera(self, z, timestamp, R_camera=None):
+    def _local_to_global(self, delta_x, delta_y, measurement_point_lat, measurement_point_lon, measurement_point_heading):
+        """Convert local offset (delta_x, delta_y) to a global lat/lon position,
+        given a reference point in lat/lon and a compass heading in degrees.
+        delta_x is transversal distance to the right, delta_y is longitudinal distance.
+        """
+        # Get the reference point in global xy
+        x, y = latlon_to_xy(measurement_point_lat, measurement_point_lon, self.init_lat, self.init_lon)
+
+        # Convert local offset to global coordinates (keep in mind compass heading)
+        heading_rad = np.deg2rad(measurement_point_heading)
+        dx_global = delta_x * np.cos(heading_rad) + delta_y * np.sin(heading_rad)
+        dy_global = - delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
+
+        # Apply offset
+        global_x = x + dx_global
+        global_y = y + dy_global
+
+        return global_x, global_y
+
+
+    def update_camera(self, z, drone_lat, drone_lon, drone_heading, timestamp, R_camera=None):
         """Update with a camera measurement (z = [[x], [y]])."""
         if R_camera is None:
             R_camera = np.eye(2) * 0.01
+
+        # Convert from an offset measurement to a global xy position
+        z[0][0], z[1][0] = self._local_to_global(z[0][0], z[1][0], drone_lat, drone_lon, drone_heading)
+        
         self._insert_measurement(z, self.H_camera, R_camera, timestamp)
         self.update(z, self.H_camera, R_camera, timestamp)
 
