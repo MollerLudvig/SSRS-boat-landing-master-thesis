@@ -373,7 +373,7 @@ def innit_filter(boat, boat_length):
     boat.y = 0
 
     #innitiate kf filter
-    kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.lat, init_lon = boat.lon)
+    kf = KalmanFilterXY(v = boat.speed, heading= boat.heading, init_lat = boat.lat, init_lon = boat.lon)
 
     return kf
 

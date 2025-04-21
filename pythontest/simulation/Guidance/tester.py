@@ -34,7 +34,7 @@ dfPlot = df.copy()
 print(dfPlot[["x", "y", "speed[m/s]"]].head(10))
 
 
-kf = KalmanFilterXY(v = v0, psi = psi0, init_lat=lat0, init_lon=lon0, timestamp = time0,  process_noise_variance=0.001,)
+kf = KalmanFilterXY(v = v0, heading=psi0, init_lat=lat0, init_lon=lon0, timestamp = time0,  process_noise_variance=0.001,)
 
 t = time0
 dt = 1  # Time step in seconds
