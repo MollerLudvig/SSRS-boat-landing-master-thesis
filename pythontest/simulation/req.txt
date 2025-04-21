@@ -2,3 +2,5 @@ pymavlink
 numpy
 redis
 matplotlib
+pyproj
+asyncio

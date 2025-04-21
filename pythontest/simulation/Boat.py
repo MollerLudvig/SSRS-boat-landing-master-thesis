@@ -39,7 +39,3 @@ class Boat(Vehicle):
     )
     
 
-
-
-
-

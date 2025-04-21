@@ -8,6 +8,8 @@ class Vehicle():
         self.connection = connection
         self.lat = None
         self.lon = None
+        self.lat_sim = None
+        self.lon_sim = None
         self.heading = None
         self.vx = None
         self.vy = None
@@ -15,6 +17,14 @@ class Vehicle():
         self.speed = None
         self.altitude = None
         self.data = {}
+
+        # Filter variables
+        self.inital_lat = None
+        self.inital_lon = None
+        self.x = None
+        self.xdot = None
+        self.y = None
+        self.ydot = None
 
     def set_parameter(self, param_name, value):
         """Sets an ArduPilot parameter via MAVLink"""
@@ -74,7 +84,21 @@ class Vehicle():
             if msg is None:
                 break
 
+    def get_lat(self):
+        return 
 
+    def update_possition_mavlink(self):
+        pos_msg = self.get_message('GLOBAL_POSITION_INT')
+        self.lat = pos_msg.lat / 1e7
+        self.lon = pos_msg.lon / 1e7
+        self.lat_sim = pos_msg.lat / 1e7
+        self.lon_sim = pos_msg.lon / 1e7
+        self.heading = pos_msg.hdg / 100
+        self.vx = pos_msg.vx / 100
+        self.vy = pos_msg.vy / 100
+        self.vz = pos_msg.vz / 100
+        self.speed = np.sqrt(self.vx**2+self.vy**2)
+        self.altitude = pos_msg.alt/1000
 
 
     
