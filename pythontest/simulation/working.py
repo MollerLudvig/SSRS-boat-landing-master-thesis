@@ -380,7 +380,9 @@ def innit_filter(boat, boat_length):
 def update_boat_position(kf, boat, boat_length):
     boat.update_possition_mavlink()
 
-    z = np.array([[boat.lat], [boat.lon], [boat.vx], [boat.heading]])
+    v = boat.speed * np.cos(np.deg2rad(boat.heading))
+    u = boat.speed * np.sin(np.deg2rad(boat.heading))
+    z = np.array([[boat.lat], [boat.lon], [boat.heading], [u], [v]])
 
     #update filter with new position
     kf.update_w_latlon(z, time.time())

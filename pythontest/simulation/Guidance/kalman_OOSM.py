@@ -2,15 +2,15 @@ import numpy as np
 import time
 from collections import deque
 import bisect
-from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
-# from coordinate_conv import latlon_to_xy, xy_to_latlon
+# from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
+from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 
 verbose = False
 
 class KalmanFilterXY:
-    def __init__(self, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+    def __init__(self, u = 0, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
-        self.x = np.array([[0], [0], [v], [heading]])  # State: [x, y, speed, yaw]
+        self.x = np.array([[0], [0], [heading], [u], [v], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r)]
         self.init_lat = init_lat
         self.init_lon = init_lon
         self.lat = None
@@ -24,16 +24,53 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0],
-                                  [0, 1, 0, 0]])
+        self.H_camera = np.array([[1, 0, 0, 0, 0, 0], # x
+                                  [0, 1, 0, 0, 0, 0]]) # y
         
-        self.H_AIS = np.array([[1, 0, 0, 0], # x
-                               [0, 1, 0, 0], # y
-                               [0, 0, 1, 0], # speed
-                               [0, 0, 0, 1]])# yaw
+        self.H_AIS = np.array([[1, 0, 0, 0, 0, 0], # x
+                               [0, 1, 0, 0, 0, 0], # y
+                               [0, 0, 1, 0, 0, 0], # yaw
+                               [0, 0, 0, 1, 0, 0], # vx
+                               [0, 0, 0, 0, 1, 0] # vy
+                               ])
         
         # State transition matrix (updated in predict)
         self.F = np.eye(self.n)
+
+    def _create_Q(self, dt, sigmaA, sigmaAR):
+        """
+        6×6 process noise covariance Q for state
+        
+        dt : float
+            Time step Δt in seconds.
+        sigmaA : float
+            Standard deviation of linear acceleration (m/s²).
+        sigmaAR : float
+            Standard deviation of yaw acceleration (rad/s²).
+        """
+        # 2×2 block for position–velocity (x–u and y–v)
+        q11 = (dt**4) / 4.0
+        q12 = (dt**3) / 2.0
+        q22 = (dt**2)
+        q_pv = sigmaA**2 * np.array([[q11, q12],
+                                    [q12, q22]])
+        
+        # 2×2 block for heading–yaw rate (psi–r)
+        q_psi = sigmaAR**2 * np.array([[q11, q12],
+                                    [q12, q22]])
+        
+        # Assemble 6×6 block‑diagonal Q
+        Q = np.zeros((6, 6))
+        
+        # indices: x=0, y=1, psi=2, u=3, v=4, r=5
+        # insert x–u block
+        Q[np.ix_([0, 3], [0, 3])] = q_pv
+        # insert y–v block
+        Q[np.ix_([1, 4], [1, 4])] = q_pv
+        # insert psi–r block
+        Q[np.ix_([2, 5], [2, 5])] = q_psi
+    
+        return Q
 
     def predict(self, timestamp, past_timestamp=None):
         """Predict the state using a time-varying step."""
@@ -43,28 +80,40 @@ class KalmanFilterXY:
             dt = timestamp - past_timestamp
         else:
             dt = timestamp - self.last_time
-            if dt <= 0.001:  # Ignore very small time steps
+            if dt <= 0.01:  # Ignore very small time steps
+                if verbose:
+                    print(f"dt too small: {dt}")
                 return
 
         # Update the state transition matrix F
-        thetaRad = np.deg2rad(self.x[3, 0])
-
-        dx = np.sin(thetaRad) * dt
-        dy = np.cos(thetaRad) * dt
+        thetaRad = np.deg2rad(self.x[2, 0])
 
         if verbose:
-            print(f"dx: {dx}, dy: {dy}")
             print(f"dt: {dt}")
             print(f"Heading: {self.x[3,0]}")
             print(f"sepeed: {self.x[2,0]}")
             print("\n")
 
+        # Update the state transition matrix F
+        thetaRad = np.deg2rad(self.x[2, 0])
+
         self.F = np.array([
-            [1, 0, dx, 0],
-            [0, 1, dy, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1]
+            [1, 0, 0, np.cos(thetaRad) * dt, -np.sin(thetaRad) * dt, 0],
+            [0, 1, 0, np.sin(thetaRad) * dt, np.cos(thetaRad) * dt, 0],
+            [0, 0, 1, 0, 0, dt],
+            [0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 1]
         ])
+
+        # F = np.array([
+        #     [1, 0, 0, dt, 0, 0],
+        #     [0, 1, 0, 0, dt, 0],
+        #     [0, 0, 1, 0, 0, dt],
+        #     [0, 0, 0, 1, 0, 0],
+        #     [0, 0, 0, 0, 1, 0],
+        #     [0, 0, 0, 0, 0, 1]
+        # ])
 
         # Predict state
         if verbose:
@@ -72,29 +121,12 @@ class KalmanFilterXY:
         self.x = self.F @ self.x
 
         # Set lat lon
-        self.lat, self.lon = xy_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
+        self.lat, self.lon = ned_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
     
-        # Dynamic process noise covariance that scales with velocity
-        v_scaler = 0
-        dt2 = dt ** 2
-        dt3 = dt ** 3 / 2
-        dt4 = dt ** 4 / 4
-
-        # print(f"Process noise variance: {self.process_noise_variance}")
-
-        # Q = self.process_noise_variance * np.array([
-        #     [dt*100, 0,0, 0, 0,],
-        #     [0, dt*100, 0, 0, 0],
-        #     [0, 0, dt3, 0, 0],
-        #     [0, 0, 0, dt4, dt4],
-        #     [0, 0, 0, dt2, dt]
-        # ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
-        Q = self.process_noise_variance * np.array([
-            [10, 0, 0, 0],
-            [0, 10, 0, 0],
-            [0, 0, 100, 0],
-            [0, 0, 0, 100]
-        ]) * (1 + np.abs(self.x[2,0]) * v_scaler)
+        # Process noise covariance
+        sigmaA = 0.2          # m/s²
+        sigmaAR = 0.02        # rad/s²
+        Q = self._create_Q(dt, sigmaA, sigmaAR)
 
         # Update state covariance
         self.P = self.F @ self.P @ self.F.T + Q
@@ -132,13 +164,78 @@ class KalmanFilterXY:
         self.P = (I - K @ H) @ self.P @ (I - K @ H).T + K @ R @ K.T  # Joseph form
 
         # Set lat lon
-        self.lat, self.lon = xy_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
+        self.lat, self.lon = ned_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
 
         if verbose:
             print("Update step:")
             print(f"z: {z}, x: {self.x}, P: {self.P}")
             print(f"lat: {self.lat}, lon: {self.lon}")
             print("\n")
+
+
+    def predict_EKF(self, timestamp, past_timestamp=None):
+        if past_timestamp is not None:
+            dt = timestamp - past_timestamp
+        else:
+            dt = timestamp - self.last_time
+            if dt <= 0.01:
+                return
+
+        # Predict state using nonlinear model
+        self.x = self.transition_function(self.x, dt)
+
+        # Compute Jacobian F
+        F = self.compute_jacobian(self.x, dt)
+
+        # Create process noise
+        sigmaA = 0.2
+        sigmaAR = 0.02
+        Q = self._create_Q(dt, sigmaA, sigmaAR)
+
+        # Predict covariance using linearized dynamics
+        self.P = F @ self.P @ F.T + Q
+
+        # Update lat/lon
+        self.lat, self.lon = ned_to_latlon(self.x[0, 0], self.x[1, 0], self.init_lat, self.init_lon)
+
+        # Save and update time
+        self.state_buffer.append((timestamp, self.x.copy(), self.P.copy()))
+        self.last_time = timestamp
+
+
+    def transition_function(self, x, dt):
+        """Applies nonlinear motion model based on current state."""
+        x_pos, y_pos, psi, u, v, r = x.flatten()
+        psi_rad = np.deg2rad(psi)
+
+        dx = np.array([
+            [x_pos + (u * np.cos(psi_rad) - v * np.sin(psi_rad)) * dt],
+            [y_pos + (u * np.sin(psi_rad) + v * np.cos(psi_rad)) * dt],
+            [psi + r * dt],
+            [u],
+            [v],
+            [r]
+        ])
+        return dx
+
+
+    def compute_jacobian(self, x, dt):
+        """Computes Jacobian of the transition function wrt state."""
+        _, _, psi, u, v, _ = x.flatten()
+        psi_rad = np.deg2rad(psi)
+
+        F = np.eye(6)
+        F[0, 2] = (-u * np.sin(psi_rad) - v * np.cos(psi_rad)) * dt
+        F[0, 3] =  np.cos(psi_rad) * dt
+        F[0, 4] = -np.sin(psi_rad) * dt
+
+        F[1, 2] = ( u * np.cos(psi_rad) - v * np.sin(psi_rad)) * dt
+        F[1, 3] =  np.sin(psi_rad) * dt
+        F[1, 4] =  np.cos(psi_rad) * dt
+
+        F[2, 5] = dt  # yaw += r * dt
+
+        return F
 
     def _handle_OOSM(self, z, H, R, timestamp):
         """
@@ -176,12 +273,12 @@ class KalmanFilterXY:
 
         # Step 3: Apply measurements in chronological order
         for t, mz, mH, mR in reversed(relevant_measurements):
-            self.predict(t, t_past)
+            self.predict_EKF(t, t_past)
             self.update(mz, mH, mR, t)
             t_past = t
 
         # Step 4: Predict to the current time
-        self.predict(self.last_time, t_past)
+        self.predict_EKF(self.last_time, t_past)
 
     def _insert_measurement(self, z, H, R, timestamp):
         """Insert measurement into buffer while maintaining chronological order."""
@@ -198,7 +295,9 @@ class KalmanFilterXY:
         delta_x is transversal distance to the right, delta_y is longitudinal distance.
         """
         # Get the reference point in global xy
-        x, y = latlon_to_xy(measurement_point_lat, measurement_point_lon, self.init_lat, self.init_lon)
+        x, y = latlon_to_ned(measurement_point_lat, measurement_point_lon, self.init_lat, self.init_lon)
+
+        # TODO: these cos sin are probably not correct anymore
 
         # Convert local offset to global coordinates (keep in mind compass heading)
         heading_rad = np.deg2rad(measurement_point_heading)
@@ -227,20 +326,27 @@ class KalmanFilterXY:
     def update_AIS(self, z, timestamp, R_AIS=None):
         """Update with AIS measurement z = [[x], [y], [speed], [heading (degrees)]."""
         if R_AIS is None:
-            # R_AIS = np.eye(4) * 0.01
-            R_AIS = np.array([[10, 0, 0, 0],
-                              [0, 10, 0, 0],
-                              [0, 0, 10, 0],
-                              [0, 0, 0, 1]]) * 0.001
+            R_AIS = np.eye(5) * 0.001
+            R_AIS[0][0] = 0.001  # x
+            R_AIS[1][1] = 0.001  # y
+            R_AIS[2][2] = 0.001  # heading
+            R_AIS[3][3] = 0.01  # u
+            R_AIS[4][4] = 0.01  # v
+            # R_AIS = np.array([[10, 0, 0, 0],
+            #                   [0, 10, 0, 0],
+            #                   [0, 0, 10, 0],
+            #                   [0, 0, 0, 1]]) * 0.001
 
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
     def update_w_latlon(self, z, timestamp, R_AIS=None):
-        """ Assume z = [[lat], [lon], [speed], [heading (degrees)]]"""
+        """ Assume z = [[lat], [lon], [heading (degrees)], [u], [v]]"""
 
         # Substitute lat lon with x, y in measurment vector
-        z[0][0], z[1][0] = latlon_to_xy(z[0][0], z[1][0], self.init_lat, self.init_lon)
+        # z[0][0], z[1][0] = latlon_to_xy(z[0][0], z[1][0], self.init_lat, self.init_lon)
+
+        z[0][0], z[1][0] = latlon_to_ned(z[0][0], z[1][0], self.init_lat, self.init_lon)
 
         # Update through conventional function
         self.update_AIS(z,timestamp, R_AIS)
