@@ -105,11 +105,26 @@ def tester():
         drone.speed = np.sqrt(drone.vx**2+drone.vy**2)
         drone.altitude = drone_pos_msg.alt/1000
 
+        drone_wind_msg = drone.get_message('WIND')
+        wind_speed = drone_wind_msg.speed
+        wind_direction = drone_wind_msg.direction # 0 is wind blowing negative latitude (south?)
+        # Add cos(wind_direction) to stall speed? Also depends on drone heading actually. 
+        # wind_speed*cos(drone.heading - wind_direction) Maybe? If they are the same we get wind_speed
+        # If they are offset by 90 we get 0
+
+        print(f"Wind Speed: {wind_speed}")
+        print(f"Wind Direction: {wind_direction}")
+        print(f"Drone heading: {drone.heading}")
+
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
 
         # Maybe be possible to set a desired_boat_speed to the same as drone speed and allow "straight down" landing
         # Exactly the same way current landing works, idk.
+
+        base_stall_speed = 12
+        wind_stall_speed = wind_speed*np.cos(np.deg2rad(drone.heading - wind_direction))
+        drone_total_stall_speed = base_stall_speed - wind_stall_speed
 
         # A catchup speed higher than impact speed will increase Gr ever so slightly because
         # The boat needs a little time to actually speed up and then distance to P3
