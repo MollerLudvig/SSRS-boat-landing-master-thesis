@@ -9,13 +9,42 @@ import matplotlib.pyplot as plt
 
 from Drone import Drone
 from Boat import Boat
+import fluctuations as fl
 from Guidance.kalman_OOSM import KalmanFilterXY
 
-def tester():
-    R = 6371000 # Earth radius
-    verbose = True
+#TODO: 
+# Add some fluctuations in boat movement, both lateral, speed, and altitude
+# And test drone's perfromance when both following and landing
+# Test for different winds
+# Test for changing winds (over time and for different altitudes)
+# Turbulence behind boat (possibly hard)
+# Test how well drone holds altitude
 
+# Add a way to know if the drone landed or not
+# Test without aborting to see what will happen
+
+
+def tester():
+    # CONSTANTS
+    R = 6371000 # Earth radius
+
+    # FLAGS:
+    verbose = True
     use_filter = False
+    fluct_boat_movement = True
+    started_descent = False # Bool to keep track when descent is started
+
+    # PARAMETERS:
+    Gr = 1/20 # Glide ratio
+    descent_lookahead = 4
+    cruise_altitude = 18 # In meters,
+    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
+    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+    altitude_error_gain = 0.2
+    speed_gain = 0.2
+
+    # FLUCTUATIONS:
+    boat_movement_fluctuation = 5
 
     # Establish connection
     if verbose:
@@ -36,9 +65,6 @@ def tester():
     drone_msg = drone.get_message('HEARTBEAT')
     boat_msg = boat.get_message('HEARTBEAT')
 
-    Gr = 1/20 # Glide ratio
-
-
     # Init redisclient
     rc = RedisClient()
     if verbose:
@@ -46,20 +72,6 @@ def tester():
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     rc.add_stream_message("stage", "started")
-
-    # NOTE: Can use descent_lookahead only for starting early (before P2), 
-    # then not look forward while already in descent
-    descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
-    # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
-    # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration has  ~1 sec delay
-    # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
-
-    cruise_altitude = 18 # In meters,
-    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
-    altitude_error_gain = 0.225
-    speed_gain = 0.2
-    started_descent = False # Bool to keep track when descent is started
 
     drone_altitudes = []
     drone_coordinates = []
@@ -82,43 +94,43 @@ def tester():
         boat.update_possition_mavlink()
         boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)    
         
-        if actual_itterator == 0 and use_filter:
-            # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
-            kf = innit_filter(boat, boat_length)
-            if verbose:
-                print(f"Boat initial position: {boat.deck_lat}, {boat.deck_lon}")
-                print(f"Boat initial speed: {boat.speed}")
-                print(f"Boat initial heading: {boat.heading}")
-                print(f"Boat initial lat: {boat.lat}")
-                print(f"Boat initial lon: {boat.lon}")
-                print(f"Boat initial deck lat: {boat.deck_lat}")
-                print(f"Boat initial deck lon: {boat.deck_lon}")
+        # if actual_itterator == 0 and use_filter:
+        #     # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
+        #     kf = innit_filter(boat, boat_length)
+        #     if verbose:
+        #         print(f"Boat initial position: {boat.deck_lat}, {boat.deck_lon}")
+        #         print(f"Boat initial speed: {boat.speed}")
+        #         print(f"Boat initial heading: {boat.heading}")
+        #         print(f"Boat initial lat: {boat.lat}")
+        #         print(f"Boat initial lon: {boat.lon}")
+        #         print(f"Boat initial deck lat: {boat.deck_lat}")
+        #         print(f"Boat initial deck lon: {boat.deck_lon}")
 
 
-        # Simulateing sparse updates
-        if not use_filter:
-            update_without_kf(boat, boat_length)
+        # # Simulateing sparse updates
+        # if not use_filter:
+        #     update_without_kf(boat, boat_length)
             # Update boat position without filter
-        elif actual_itterator%3 == 0:
-            update_boat_position(kf, boat, boat_length)
-            # Update boat position 
-        else:
-            predict_kf(kf, boat, boat_length)
+        # elif actual_itterator%3 == 0:
+        #     update_boat_position(kf, boat, boat_length)
+        #     # Update boat position 
+        # else:
+        #     predict_kf(kf, boat, boat_length)
 
-        actual_itterator += 1
-        # Save kf state in CSV
-        boat.data.update({"kf_x": kf.x[0][0],
-                          "kf_y": kf.x[1][0],
-                          "kf_lat": kf.lat,
-                          "kf_lon": kf.lon,
-                          "kf_speed": kf.x[2][0],
-                          "kf_heading": kf.x[3][0],
-                          "real_heading": boat.heading,
-                          "real_lat": boat.lat_sim,
-                          "real_lon": boat.lon_sim})
+        # actual_itterator += 1
+        # # Save kf state in CSV
+        # boat.data.update({"kf_x": kf.x[0][0],
+        #                   "kf_y": kf.x[1][0],
+        #                   "kf_lat": kf.lat,
+        #                   "kf_lon": kf.lon,
+        #                   "kf_speed": kf.x[2][0],
+        #                   "kf_heading": kf.x[3][0],
+        #                   "real_heading": boat.heading,
+        #                   "real_lat": boat.lat_sim,
+        #                   "real_lon": boat.lon_sim})
         
-        if verbose:
-             print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
+        # if verbose:
+        #      print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
 
         drone_wind_msg = drone.get_message('WIND')
         wind_speed = drone_wind_msg.speed
@@ -150,12 +162,18 @@ def tester():
         # The boat needs a little time to actually speed up and then distance to P3
         # Will be slightly less but with the same z_wanted so Gr has to increase a little
 
-        catchup_speed = 3
         impact_speed = 2
         desired_boat_speed = drone.speed - impact_speed
 
+        # Simulate fluctuating boat movement by adding noise to heading
+        boat_direction = fl.boat_movement(fluct_boat_movement, boat_movement_fluctuation)
+
         # Follow boat
         if drone.stage == "follow":
+
+            # Move boat
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
             # Calculate P2 and P1
             P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
@@ -205,20 +223,15 @@ def tester():
             print(f"Desired boat speed: {max(drone_total_stall_speed, wanted_boat_speed)}")
             print(f"Actual boat speed: {boat.speed}")
 
-            # Move boat
-            boat_target_lat = boat.lat_sim + 0.002
-            boat_target_lon = boat.lon_sim
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
-
         # Land on boat
         elif drone.stage == "land":
 
             # Move boat
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
+
             print(f"Drone altitude: {drone.altitude}")
             print("\n")
-            boat_target_lat = boat.lat_sim + 0.002
-            boat_target_lon = boat.lon_sim
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
             # Calculate where P2 is
             P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
@@ -369,11 +382,9 @@ def tester():
         
         # No command
         else:
-
-            # Move boat
-            boat_target_lat = boat.lat_sim + 0.002
-            boat_target_lon = boat.lon_sim
             boat.set_speed(desired_boat_speed)
+            # Move boat
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, 3)
 
             # Loiter until command recieved
