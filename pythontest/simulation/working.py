@@ -107,7 +107,7 @@ def tester():
                           "kf_y": kf.x[1][0],
                           "kf_lat": kf.lat,
                           "kf_lon": kf.lon,
-                          "kf_speed": kf.x[2][0],
+                          "kf_yaw": kf.x[2][0],
                           "kf_heading": kf.x[3][0],
                           "real_heading": boat.heading,
                           "real_lat": boat.lat_sim,
@@ -380,30 +380,44 @@ def innit_filter(boat, boat_length):
 def update_boat_position(kf, boat, boat_length):
     boat.update_possition_mavlink()
 
-    v = boat.speed * np.cos(np.deg2rad(boat.heading))
-    u = boat.speed * np.sin(np.deg2rad(boat.heading))
-    z = np.array([[boat.lat], [boat.lon], [boat.heading], [u], [v]])
+    # v = boat.speed * np.cos(np.deg2rad(boat.heading))
+    # u = boat.speed * np.sin(np.deg2rad(boat.heading))
+    # z = np.array([[boat.lat], [boat.lon], [boat.heading], [u], [v]])
+
+    z = np.array([[boat.lat], [boat.lon], [boat.heading], [boat.vx], [boat.vy]])
 
     #update filter with new position
     kf.update_w_latlon(z, time.time())
 
-    boat.lat = kf.lat
-    boat.lon = kf.lon
-    boat.speed = kf.x[2][0]
-    # boat.heading = kf.x[3][0]
+    boat.sim_lat = boat.lat
+    boat.sim_lon = boat.lon
 
-    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
+    update_object(boat, kf, boat_length)
+
 
 def predict_kf(kf, boat, boat_length):
     kf.predict(time.time())
 
-    boat.lat = kf.lat
-    boat.lon = kf.lon
-    boat.speed = kf.x[2][0]
-    # boat.heading = kf.x[3][0]
+    update_object(boat, kf, boat_length)
 
-    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
     
+def update_object(obj, filter, boat_length = 0):
+    # Update the object's position using the Kalman filter
+    obj.lat = filter.x[0][0]
+    obj.lon = filter.x[1][0]
+    obj.speed = np.sqrt((filter.x[3][0])**2 + (filter.x[4][0])**2)
+    obj.heading = filter.x[3][0]
+
+    obj.x = filter.x[0][0]
+    obj.xdot = filter.x[3][0]
+    obj.y = filter.x[1][0]
+    obj.ydot = filter.x[4][0]
+    obj.psi = filter.x[2][0]
+    obj.psidot = filter.x[5][0]
+
+    # Calculate the deck position
+    obj.deck_lat, obj.deck_lon = wp.calc_look_ahead_point(obj.lat, obj.lon, obj.heading-180, boat_length)
+
 
 def start_vehicles_simulation(drone, boat):
     # Parameter settings
