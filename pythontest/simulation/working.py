@@ -105,30 +105,31 @@ def tester():
                 print(f"Boat initial deck lon: {boat.deck_lon}")
 
 
-        # # Simulateing sparse updates
-        # if not use_filter:
-        #     update_without_kf(boat, boat_length)
+        # Simulateing sparse updates
+        if not use_filter:
+            update_without_kf(boat, boat_length)
             # Update boat position without filter
-        # elif actual_itterator%3 == 0:
-        #     update_boat_position(kf, boat, boat_length)
-        #     # Update boat position 
-        # else:
-        #     predict_kf(kf, boat, boat_length)
+        elif actual_itterator%3 == 0:
+            update_boat_position(kf, boat, boat_length)
+            # Update boat position 
+        else:
+            predict_kf(kf, boat, boat_length)
 
-        # actual_itterator += 1
-        # # Save kf state in CSV
-        # boat.data.update({"kf_x": kf.x[0][0],
-        #                   "kf_y": kf.x[1][0],
-        #                   "kf_lat": kf.lat,
-        #                   "kf_lon": kf.lon,
-        #                   "kf_speed": kf.x[2][0],
-        #                   "kf_heading": kf.x[3][0],
-        #                   "real_heading": boat.heading,
-        #                   "real_lat": boat.lat_sim,
-        #                   "real_lon": boat.lon_sim})
+        actual_itterator += 1
+        # Save kf state in CSV
+        if use_filter:
+            boat.data.update({"kf_x": kf.x[0][0],
+                          "kf_y": kf.x[1][0],
+                          "kf_lat": kf.lat,
+                          "kf_lon": kf.lon,
+                          "kf_speed": kf.x[2][0],
+                          "kf_heading": kf.x[3][0],
+                          "real_heading": boat.heading,
+                          "real_lat": boat.lat_sim,
+                          "real_lon": boat.lon_sim})
         
-        # if verbose:
-        #      print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
+        if verbose and use_filter:
+             print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
 
         drone_wind_msg = drone.get_message('WIND')
         wind_speed = drone_wind_msg.speed
