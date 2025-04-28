@@ -394,9 +394,6 @@ def tester():
         boat.flush_messages()
         drone.flush_messages()
 
-
-
-
 def innit_filter(boat, boat_length):
     # Get initial position of boat
     boat.update_possition_mavlink()
