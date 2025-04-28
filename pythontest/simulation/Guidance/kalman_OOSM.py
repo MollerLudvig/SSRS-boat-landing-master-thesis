@@ -2,8 +2,8 @@ import numpy as np
 import time
 from collections import deque
 import bisect
-# from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon
-from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+# from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 
 verbose = False
 
@@ -85,10 +85,9 @@ class KalmanFilterXY:
                     print(f"dt too small: {dt}")
                 return
 
-        # Update the state transition matrix F
-        thetaRad = np.deg2rad(self.x[2, 0])
 
         if verbose:
+            print("\n")
             print(f"dt: {dt}")
             print(f"Heading: {self.x[3,0]}")
             print(f"sepeed: {self.x[2,0]}")
@@ -116,8 +115,7 @@ class KalmanFilterXY:
         # ])
 
         # Predict state
-        if verbose:
-            x_old = self.x
+        x_old = self.x # For prints
         self.x = self.F @ self.x
 
         # Set lat lon
@@ -136,12 +134,10 @@ class KalmanFilterXY:
 
         # Print debug information
         if verbose:
+            print("\n")
             print("Predict step:")
             print(f"dt: {dt}, last_time: {self.last_time}, timestamp: {timestamp}")
-            print(f"Process nice Q: {Q}")
-            print(f"F: {self.F}")
-            print(f"old x: {x_old}")
-            print(f"x: {self.x}, P: {self.P}")
+            print(f"x: {self.x[0][0]}, y: {self.x[1][0]}, psi: {self.x[2][0]}, u: {self.x[3][0]}, v: {self.x[4][0]}")
             print(f"lat: {self.lat}, lon: {self.lon}")
             print("\n")
 
@@ -157,6 +153,8 @@ class KalmanFilterXY:
             self.last_time = timestamp
 
         y = z - H @ self.x  # Innovation
+        y[2][0] = self.wrap_angle_deg(y[2][0]) # Wrap angle to [-180, 180]
+
         S = H @ (self.P @ H.T) + R  # Innovation covariance
         K = self.P @ H.T @ np.linalg.inv(S)  # Kalman Gain
         self.x = self.x + K @ y # Update state
@@ -167,10 +165,17 @@ class KalmanFilterXY:
         self.lat, self.lon = ned_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
 
         if verbose:
-            print("Update step:")
-            print(f"z: {z}, x: {self.x}, P: {self.P}")
-            print(f"lat: {self.lat}, lon: {self.lon}")
-            print("\n")
+            try:
+                print("\n")
+                print("Update step:")
+                # print(f"z: {z}, x: {self.x}, P: {self.P}")
+                print(f"z_x: {z[0][0]}, z_y: {z[1][0]}, z_psi: {z[2][0]}, z_u: {z[3][0]}, z_v: {z[4][0]}")
+                print(f"x_x: {self.x[0][0]}, x_y: {self.x[1][0]}, x_psi: {self.x[2][0]}, x_u: {self.x[3][0]}, x_v: {self.x[4][0]}")
+                print(f"lat: {self.lat}, lon: {self.lon}")
+                print("\n")
+            except Exception as e:
+                print(f"Error in printing update step: {e}")
+
 
 
     def predict_EKF(self, timestamp, past_timestamp=None):
@@ -216,6 +221,10 @@ class KalmanFilterXY:
             [v],
             [r]
         ])
+        
+        # Wrap angles to [-180, 180]
+        dx[2][0] = self.wrap_angle_deg(dx[2][0])
+
         return dx
 
 
@@ -298,11 +307,14 @@ class KalmanFilterXY:
         x, y = latlon_to_ned(measurement_point_lat, measurement_point_lon, self.init_lat, self.init_lon)
 
         # TODO: these cos sin are probably not correct anymore
+        # PROBABLY GOOD NOW I THINK
 
         # Convert local offset to global coordinates (keep in mind compass heading)
         heading_rad = np.deg2rad(measurement_point_heading)
-        dx_global = delta_x * np.cos(heading_rad) + delta_y * np.sin(heading_rad)
-        dy_global = - delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
+        # dx_global = delta_x * np.cos(heading_rad) + delta_y * np.sin(heading_rad)
+        # dy_global = - delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
+        dx_global = delta_x * np.cos(heading_rad) - delta_y * np.sin(heading_rad)
+        dy_global = delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
 
         # Apply offset
         global_x = x + dx_global
@@ -350,3 +362,8 @@ class KalmanFilterXY:
 
         # Update through conventional function
         self.update_AIS(z,timestamp, R_AIS)
+
+
+    def wrap_angle_deg(self, angle):
+        return (angle + 180) % 360 - 180
+

@@ -15,8 +15,8 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 # csv_file = "pythontest/Guidance/valo_3.csv"  
 # csv_file = "pythontest/simulation/Guidance/data_short.csv"
 # csv_file = "data_short_short.csv"
-# csv_file = "data_short.csv"
-csv_file = "ssrs-josephine_1.csv"
+csv_file = "data_short2.csv"
+# csv_file = "ssrs-josephine_1.csv"
 
 df = pd.read_csv(csv_file)
 

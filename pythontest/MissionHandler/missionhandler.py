@@ -22,11 +22,11 @@ while True:
 
     if wanted_stage == "follow":
         # Read P1 dist, drone dist, boat speed and figure out if diversion is needed
-        follow_diversion_data = rc.get_latest_stream_message("follow diversion")
+        follow_diversion_data = rc.get_latest_stream_message("follow diversion")[1]
 
         drone_distance_to_boat = follow_diversion_data["drone_distance"]
         stall_speed = follow_diversion_data["stall_speed"]
-        P2_distance = follow_diversion_data["P2_distancec"]
+        P2_distance = follow_diversion_data["P2_distance"]
         boat_speed = follow_diversion_data["boat_speed"]
 
         if boat_speed < stall_speed and drone_distance_to_boat < (P2_distance + 5):

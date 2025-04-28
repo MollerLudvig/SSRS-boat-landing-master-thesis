@@ -78,8 +78,6 @@ def tester():
     while True:
 
         drone.update_possition_mavlink()
-        boat.update_possition_mavlink()
-        boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)    
         
         if actual_itterator == 0:
             # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
@@ -373,7 +371,7 @@ def innit_filter(boat, boat_length):
     boat.y = 0
 
     #innitiate kf filter
-    kf = KalmanFilterXY(v = boat.speed, heading= boat.heading, init_lat = boat.lat, init_lon = boat.lon)
+    kf = KalmanFilterXY(u = boat.vx, v = boat.vy, heading= boat.heading, init_lat = boat.lat, init_lon = boat.lon)
 
     return kf
 
@@ -403,10 +401,11 @@ def predict_kf(kf, boat, boat_length):
     
 def update_object(obj, filter, boat_length = 0):
     # Update the object's position using the Kalman filter
-    obj.lat = filter.x[0][0]
-    obj.lon = filter.x[1][0]
-    obj.speed = np.sqrt((filter.x[3][0])**2 + (filter.x[4][0])**2)
-    obj.heading = filter.x[3][0]
+    obj.lat = filter.lat
+    obj.lon = filter.lon
+    # obj.speed = np.sqrt((filter.x[3][0])**2 + (filter.x[4][0])**2)
+    obj.speed = filter.x[3][0]
+    obj.heading = filter.x[2][0]
 
     obj.x = filter.x[0][0]
     obj.xdot = filter.x[3][0]
