@@ -47,7 +47,7 @@ def tester():
 
     # NOTE: Can use descent_lookahead only for starting early (before P2), 
     # then not look forward while already in descent
-    descent_lookahead = 5 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
+    descent_lookahead = 4 # In meters, How far ahead in the slope the drone should look when deciding z_wanted
     # "correct" descent_lookahead depends on Gr and impact speed: A farther P3 distance means less lookahead
     # Ardupilot takes ~2-3 iterations until it starts descending properly and each iteration has  ~1 sec delay
     # So the descent can be up to 1 second late due to the delay aswell ----> 4 sec lookahead
@@ -57,7 +57,6 @@ def tester():
     boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     altitude_error_gain = 0.225
     speed_gain = 0.2
-    drone_stall_speed = 12
     started_descent = False # Bool to keep track when descent is started
 
     drone_altitudes = []
@@ -116,15 +115,36 @@ def tester():
         if verbose:
              print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
 
+        drone_wind_msg = drone.get_message('WIND')
+        wind_speed = drone_wind_msg.speed
+        wind_direction = drone_wind_msg.direction # 0 is wind blowing negative latitude (south?)
+        # Add cos(wind_direction) to stall speed? Also depends on drone heading actually. 
+        # wind_speed*cos(drone.heading - wind_direction) Maybe? If they are the same we get wind_speed
+        # If they are offset by 90 we get 0
+
+        print(f"Wind Speed: {wind_speed}")
+        print(f"Wind Direction: {wind_direction}")
+        print(f"Drone heading: {drone.heading}")
+
         # Read redis stream for flight stage ("land", "follow")
         drone.stage =  rc.get_latest_stream_message("stage")[1]
 
         # Maybe be possible to set a desired_boat_speed to the same as drone speed and allow "straight down" landing
         # Exactly the same way current landing works, idk.
 
+        base_stall_speed = 12
+        wind_stall_speed = wind_speed*np.cos(np.deg2rad(drone.heading - wind_direction))
+        drone_total_stall_speed = base_stall_speed - wind_stall_speed
+
+        print("\n")
+        print(f"Wind correction stall speed: {wind_stall_speed}")
+        print(f"Total stall speed: {drone_total_stall_speed}")
+        print("\n")
+
         # A catchup speed higher than impact speed will increase Gr ever so slightly because
         # The boat needs a little time to actually speed up and then distance to P3
         # Will be slightly less but with the same z_wanted so Gr has to increase a little
+
         catchup_speed = 3
         impact_speed = 2
         desired_boat_speed = drone.speed - impact_speed
@@ -146,7 +166,7 @@ def tester():
             drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
 
             follow_diversion_data.update({"P2_distance": P2_distance,
-                                   "stall_speed": drone_stall_speed,
+                                   "stall_speed": drone_total_stall_speed,
                                    "boat_speed": boat.speed,
                                    "drone_distance": drone_distance_to_boat})
             
@@ -155,13 +175,13 @@ def tester():
             # CHANGE FOR REAL WORLD: Set drone speed and not boat speed
             dist_behind_P1 = drone_distance_to_boat - P1_distance
             wanted_boat_speed = drone.speed - dist_behind_P1*speed_gain
-            boat.set_speed(max(drone_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
+            boat.set_speed(max(drone_total_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
             
             # Send boat speed, drone dist to boat, P2/P1 dist to boat and stall speed to missionhandler
 
             print(f"P1 distance_ {P1_distance}")
             print(f"Drone distance: {drone_distance_to_boat}")
-            print(f"Desired boat speed: {max(drone_stall_speed, wanted_boat_speed)}")
+            print(f"Desired boat speed: {max(drone_total_stall_speed, wanted_boat_speed)}")
             print(f"Actual boat speed: {boat.speed}")
             # -boat_length because the actual landing spot is not where the boat coordinates are read
 
@@ -171,13 +191,13 @@ def tester():
             # CHANGE FOR REAL WORLD: Set drone speed and not boat speed
             dist_behind_P1 = drone_distance_to_boat - P1_distance
             wanted_boat_speed = drone.speed - dist_behind_P1*speed_gain
-            boat.set_speed(max(drone_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
+            boat.set_speed(max(drone_total_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
             
             # Send boat speed, drone dist to boat, P2/P1 dist to boat and stall speed to missionhandler
 
             print(f"P1 distance_ {P1_distance}")
             print(f"Drone distance: {drone_distance_to_boat}")
-            print(f"Desired boat speed: {max(drone_stall_speed, wanted_boat_speed)}")
+            print(f"Desired boat speed: {max(drone_total_stall_speed, wanted_boat_speed)}")
             print(f"Actual boat speed: {boat.speed}")
 
             # Move boat

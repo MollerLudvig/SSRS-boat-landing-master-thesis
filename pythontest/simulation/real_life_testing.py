@@ -124,7 +124,7 @@ def tester():
             P2_distance = wp.calc_P2(desired_drone_speed, boat.speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
             P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance)
 
-            P1_distance = P2_distance + 50
+            P1_distance = P2_distance + 20
 
             # Set boat's last recieved position as a waypoint for the drone
             target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, 0)
@@ -272,7 +272,7 @@ def tester():
                 rc.add_stream_message("boat data", boat.data)
                 rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
-                # Drone as landed on boat
+                # Drone has landed on boat
                 if drone.altitude < boat.altitude + 1.5:
                     rc.add_stream_message("stage", "diversion")
 
