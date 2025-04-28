@@ -15,6 +15,8 @@ def tester():
     R = 6371000 # Earth radius
     verbose = True
 
+    use_filter = False
+
     # Establish connection
     if verbose:
         print("Connecting to vehicles")
@@ -81,7 +83,7 @@ def tester():
         boat.update_possition_mavlink()
         boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)    
         
-        if actual_itterator == 0:
+        if actual_itterator == 0 and use_filter:
             # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
             kf = innit_filter(boat, boat_length)
             if verbose:
@@ -95,7 +97,10 @@ def tester():
 
 
         # Simulateing sparse updates
-        if actual_itterator%3 == 0:
+        if not use_filter:
+            update_without_kf(boat, boat_length)
+            # Update boat position without filter
+        elif actual_itterator%3 == 0:
             update_boat_position(kf, boat, boat_length)
             # Update boat position 
         else:
@@ -376,6 +381,11 @@ def innit_filter(boat, boat_length):
     kf = KalmanFilterXY(v = boat.speed, heading= boat.heading, init_lat = boat.lat, init_lon = boat.lon)
 
     return kf
+
+def update_without_kf(boat, boat_length):
+    boat.update_possition_mavlink()
+    boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
+
 
 def update_boat_position(kf, boat, boat_length):
     boat.update_possition_mavlink()
