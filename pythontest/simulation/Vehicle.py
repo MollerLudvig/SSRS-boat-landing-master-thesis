@@ -10,6 +10,8 @@ class Vehicle():
         self.lon = None
         self.lat_sim = None
         self.lon_sim = None
+        self.v_lat = None
+        self.v_lon = None
         self.heading = None
         self.vx = None
         self.vy = None
@@ -96,11 +98,13 @@ class Vehicle():
         self.lat_sim = pos_msg.lat / 1e7
         self.lon_sim = pos_msg.lon / 1e7
         self.heading = pos_msg.hdg / 100
-        self.vx = pos_msg.vx / 100
-        self.vy = pos_msg.vy / 100
+        self.v_lat = pos_msg.vx / 100   # Global pos int ger hastigheter i global perspektiv så x är lat osv
+        self.v_lon = pos_msg.vy / 100
         self.vz = pos_msg.vz / 100
-        self.speed = np.sqrt(self.vx**2+self.vy**2)
+        self.speed = np.sqrt(self.v_lat**2+self.v_lon**2)
         self.altitude = pos_msg.alt/1000
 
-
-    
+        # Global to body frame rotation (rotate by -heading)
+        headingRad = np.deg2rad(pos_msg.hdg / 100)
+        self.vx = self.v_lat * np.cos(headingRad) + self.v_lon * np.sin(headingRad)
+        self.vy = -self.v_lat * np.sin(headingRad) + self.v_lon * np.cos(headingRad)
