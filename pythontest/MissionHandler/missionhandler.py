@@ -30,6 +30,10 @@ while True:
         boat_speed = follow_diversion_data["boat_speed"]
 
         if boat_speed < stall_speed and drone_distance_to_boat < (P2_distance + 5):
+            print(f"Drone to boat: {drone_distance_to_boat}")
+            print(f"Stall speed: {stall_speed}")
+            print(f"P2 dist: {P2_distance}")
+            print(f"Boat speed: {boat_speed}")
             rc.add_stream_message(stage_stream, "diversion")
     
     if wanted_stage == "FBWB":

@@ -13,10 +13,10 @@ import fluctuations as fl
 from Guidance.kalman_OOSM import KalmanFilterXY
 
 #TODO: 
-# Add some fluctuations in boat movement, both lateral, (speed), and altitude
+# Add some fluctuations in boat movement, both lateral, (speed), and altitude - DONE
 # And test drone's perfromance when both following and landing
-# Test for different winds
-# Test for changing winds (over time and for different altitudes)
+# Test for different winds - DONE
+# Test for changing winds (over time and for different altitudes) - DONE (Not altitude)
 # Turbulence behind boat (possibly hard)
 # Test how well drone holds altitude
 
@@ -38,7 +38,7 @@ def tester():
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     descent_lookahead = 4
-    cruise_altitude = 15 # In meters,
+    cruise_altitude = 15 # In meters
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     altitude_error_gain = 0.2
@@ -175,7 +175,18 @@ def tester():
         boat_altitude = fl.boat_altitude(fluct_boat_alt, boat_alt_fluctuation, 
                                          desired_boat_altitude, iterator)
         
-        print(boat_altitude)
+        # Calculate the distance between drone and boat
+        drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
+
+        P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
+        P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
+
+        follow_diversion_data.update({"P2_distance": P2_distance,
+                                "stall_speed": drone_total_stall_speed,
+                                "boat_speed": boat.speed,
+                                "drone_distance": drone_distance_to_boat})
+                    
+        rc.add_stream_message("follow diversion", follow_diversion_data)
         
         iterator += 1
 
@@ -186,25 +197,11 @@ def tester():
             boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, boat_altitude)
 
-            # Calculate P2 and P1
-            P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
-            P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance)
-
             P1_distance = P2_distance + 20
 
             # Set boat's last recieved position as a waypoint for the drone
             target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, 40)
             drone.follow_target([target_lat], [target_lon], [cruise_altitude])
-
-            # Calculate the distance between drone and boat
-            drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
-
-            follow_diversion_data.update({"P2_distance": P2_distance,
-                                   "stall_speed": drone_total_stall_speed,
-                                   "boat_speed": boat.speed,
-                                   "drone_distance": drone_distance_to_boat})
-            
-            rc.add_stream_message("follow diversion", follow_diversion_data)
 
             # CHANGE FOR REAL WORLD: Set drone speed and not boat speed
             dist_behind_P1 = drone_distance_to_boat - P1_distance
@@ -226,12 +223,7 @@ def tester():
             print(f"Drone altitude: {drone.altitude}")
             print("\n")
 
-            # Calculate where P2 is
-            P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
-            P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
-
             # Calculate drone distance to boat and boat distance to P3 (target)
-            drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
             boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
 
             # Calculate where P3 (landing point) is
@@ -374,7 +366,7 @@ def tester():
             rc.add_stream_message("needed_glide_ratio", Gr)
         
         elif drone.stage == "exit":
-            # Shut down connection and gazebo    
+            # Shut down connection and gazebo
             print("Shutting down connection and gazebo")        
             break
         
