@@ -471,7 +471,7 @@ def start_vehicles_simulation(drone, boat):
 
     # Arm vehicles
     drone.arm_vehicle()
-    sleep(1)
+    sleep(2)
     boat.arm_vehicle()
     sleep(2)
 
@@ -479,7 +479,7 @@ def start_vehicles_simulation(drone, boat):
 
     # Takeoff vehicles
     boat.takeoff(3)
-    sleep(3)
+    sleep(8)
     drone.set_servo(3, 1800)
     sleep(2)
 
