@@ -19,3 +19,13 @@ def boat_altitude(flag, magnitude, base_altitude, i):
         boat_alt = noisy_boat_alt
         
     return boat_alt
+
+def drone_throttle(flag, magnitude, base_throttle):
+    drone_throttle_fluct = 2*magnitude*(np.random.rand()-0.5)
+    noisy_throttle = base_throttle + drone_throttle_fluct
+
+    output_throttle = base_throttle
+    if flag:
+        output_throttle = noisy_throttle
+    
+    return output_throttle

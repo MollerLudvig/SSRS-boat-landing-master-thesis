@@ -23,7 +23,6 @@ from Guidance.kalman_OOSM import KalmanFilterXY
 # Add a way to know if the drone landed or not
 # Test without aborting to see what will happen
 
-
 def tester():
     # CONSTANTS
     R = 6371000 # Earth radius
@@ -34,6 +33,7 @@ def tester():
     started_descent = False # Bool to keep track when descent is started
     fluct_boat_movement = False
     fluct_boat_alt = False
+    fluct_drone_throttle = False
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
@@ -45,8 +45,16 @@ def tester():
     speed_gain = 0.2
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 5
-    boat_alt_fluctuation = 3
+    boat_movement_fluctuation = 6 # Heading in degrees
+    boat_alt_fluctuation = 4 # Meters
+    throttle_fluct = 50
+
+    # BASE VALUES:
+    base_stall_speed = 12
+    impact_speed = 2
+    desired_boat_direction = 0
+    desired_boat_altitude = 3
+    base_throttle = 1800
 
     # Establish connection
     if verbose:
@@ -85,7 +93,7 @@ def tester():
     xs = [0]
 
 
-    start_vehicles_simulation(drone, boat)
+    start_vehicles_simulation(drone, boat, base_throttle)
 
     landing_iterator = 0
     iterator = 0
@@ -150,7 +158,7 @@ def tester():
         # Maybe be possible to set a desired_boat_speed to the same as drone speed and allow "straight down" landing
         # Exactly the same way current landing works, idk.
 
-        base_stall_speed = 12
+
         wind_stall_speed = wind_speed*np.cos(np.deg2rad(drone.heading - wind_direction))
         drone_total_stall_speed = base_stall_speed - wind_stall_speed
 
@@ -163,17 +171,21 @@ def tester():
         # The boat needs a little time to actually speed up and then distance to P3
         # Will be slightly less but with the same z_wanted so Gr has to increase a little
 
-        impact_speed = 2
         desired_boat_speed = drone.speed - impact_speed
 
-        # Simulate fluctuating boat movement by adding noise to heading
-        desired_boat_direction = 0
-        boat_direction = fl.boat_movement(fluct_boat_movement, 
+        # Fluctuate values
+        commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
                                           boat_movement_fluctuation, desired_boat_direction)
         
-        desired_boat_altitude = 3
-        boat_altitude = fl.boat_altitude(fluct_boat_alt, boat_alt_fluctuation, 
+        if abs((boat.heading - desired_boat_direction + 180) % 360 - 180) <= 5:
+            commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
+                                          boat_movement_fluctuation, boat.heading)
+        
+        commanded_boat_altitude = fl.boat_altitude(fluct_boat_alt, boat_alt_fluctuation, 
                                          desired_boat_altitude, iterator)
+        
+        commanded_drone_throttle = fl.drone_throttle(fluct_drone_throttle, throttle_fluct, base_throttle)
+        drone.set_servo(3, commanded_drone_throttle)
         
         # Calculate the distance between drone and boat
         drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
@@ -194,8 +206,8 @@ def tester():
         if drone.stage == "follow":
 
             # Move boat
-            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, boat_altitude)
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
 
             P1_distance = P2_distance + 20
 
@@ -217,8 +229,8 @@ def tester():
         elif drone.stage == "land":
 
             # Move boat
-            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, boat_altitude)
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
 
             print(f"Drone altitude: {drone.altitude}")
             print("\n")
@@ -352,8 +364,8 @@ def tester():
         elif drone.stage == "diversion":
             print("DIVERTING", flush=True)
 
-            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, boat_altitude)
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
 
             # Allow going into follow mode and starting a new descent
             started_descent = False
@@ -374,8 +386,8 @@ def tester():
         else:
             boat.set_speed(desired_boat_speed)
             # Move boat
-            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat_direction, 200) 
-            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, boat_altitude)
+            boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
+            boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
 
             # Loiter until command recieved
             drone.set_mode("GUIDED")
@@ -448,7 +460,7 @@ def update_object(obj, filter, boat_length = 0):
     obj.deck_lat, obj.deck_lon = wp.calc_look_ahead_point(obj.lat, obj.lon, obj.heading-180, boat_length)
 
 
-def start_vehicles_simulation(drone, boat):
+def start_vehicles_simulation(drone, boat, base_throttle):
     # Parameter settings
     drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
     drone.set_parameter("TECS_TIME_CONST", 3.0) # Default: 5.0
@@ -479,8 +491,8 @@ def start_vehicles_simulation(drone, boat):
 
     # Takeoff vehicles
     boat.takeoff(3)
-    sleep(8)
-    drone.set_servo(3, 1800)
-    sleep(2)
+    sleep(6)
+    drone.set_servo(3, base_throttle)
+    sleep(3)
 
     print("Takeoff complete")
