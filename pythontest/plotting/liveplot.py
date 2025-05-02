@@ -16,6 +16,11 @@ drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
 boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
                       
 
+# figWind, (axWindSpeed, axWindDir) = plt.subplots(2, 1, num='Wind Data')
+# figGeo, (axLatLon, axHeading) = plt.subplots(2, 1, num='Sim Location & Heading')
+# figAtt, (axRoll, axPitch, axYaw) = plt.subplots(3, 1, num='Drone & Boat Attitude')
+# figDyn, (axLinAcc, axAngVel, axVelVec) = plt.subplots(3, 1, num='Vehicle Dynamics')
+
 # Create figures and axes conditionally
 if enableDroneWindow:
     figDrone, (axDronePos, axDroneAtt) = plt.subplots(2, 1, num="Drone View")
@@ -36,14 +41,14 @@ def update_plot(frame):
     # Drone
     posD, attD, gpsD, velD, accD, angD, windD, simD = drone.get_latest_data()
     if posD:
-        x, y = zip(*posD)
+        pos_time, x, y, z, vx, vy, vz = zip(*posD)
         axPosDrone.clear()
         axPosDrone.plot(x, y, color=drone.color)
         axPosDrone.set_title("Drone Position (X, Y)")
         axPosDrone.axis('equal')
 
     if attD:
-        roll, pitch, yaw = zip(*attD)
+        att_time, roll, pitch, yaw, roll_speed, pitch_speed, yaw_speed = zip(*attD)
         axAttDrone.clear()
         axAttDrone.plot(roll, label='Roll')
         axAttDrone.plot(pitch, label='Pitch')
@@ -55,14 +60,14 @@ def update_plot(frame):
     posB, attB, gpsB, velB, accB, angB, windB, simB  = boat.get_latest_data()
 
     if posB:
-        x, y = zip(*posB)
+        pos_time, x, y, z, vx, vy, vz = zip(*posB)
         axPosBoat.clear()
         axPosBoat.plot(x, y, color=boat.color)
         axPosBoat.set_title("Boat Position (X, Y)")
         axPosBoat.axis('equal')
 
     if attB:
-        roll, pitch, yaw = zip(*attB)
+        att_time, roll, pitch, yaw, roll_speed, pitch_speed, yaw_speed = zip(*attB)
         axAttBoat.clear()
         axAttBoat.plot(roll, label='Roll')
         axAttBoat.plot(pitch, label='Pitch')
@@ -73,10 +78,10 @@ def update_plot(frame):
     # Global Position Plot
     axGlobalPos.clear()
     if gpsD:
-        latD, lonD = zip(*gpsD)
+        GPS_timeD, latD, lonD, altG,relative_altD, vxD, vyD, vzD, hdgD = zip(*gpsD)
         axGlobalPos.plot(lonD, latD, label="Drone", color=drone.color)
     if gpsB:
-        latB, lonB = zip(*gpsB)
+        GPS_timeB, latB, lonB, altB, relative_altB, vxB, vyB, vzB, hdgB = zip(*gpsB)
         axGlobalPos.plot(lonB, latB, label="Boat", color=boat.color)
     axGlobalPos.set_title("Global Position (Lat, Lon)")
     axGlobalPos.set_xlabel("Longitude")
