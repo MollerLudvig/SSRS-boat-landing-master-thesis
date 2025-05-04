@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from pymavlink import mavutil
 import time
 from VehicleMonitor import VehicleMonitor
+from variabels import Variables
 
 enableDroneWindow = True
 enableBoatWindow = True
@@ -26,9 +27,16 @@ fig, axs = plt.subplots(3, 2, figsize=(12, 10))
 fig.suptitle("Live MAVLink Vehicle Monitor", fontsize=16)
 axs[2][1].axis('off')
 
+droneData = Variables(drone)
+boatData = Variables(boat)
+
 def update_plot(_):
     # Drone
     posD, attD, gpsD, velD, accD, angD, windD, simD = drone.get_latest_data()
+
+    droneData.set_data()
+    boatData.set_data()
+
     if posD:
         _, x, y, *_ = zip(*posD)
         axPosDrone.clear()
@@ -159,5 +167,4 @@ except KeyboardInterrupt:
             plt.close(figGlobal)
     print("Plots saved.")
     exit(0)
-
 
