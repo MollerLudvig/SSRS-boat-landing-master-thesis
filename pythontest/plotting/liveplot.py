@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from pymavlink import mavutil
 import time
 from VehicleMonitor import VehicleMonitor
-from variabels import Variables
+from variabels import VehicleData  # Import the new VehicleData class
 
 enableDroneWindow = True
 enableBoatWindow = True
@@ -12,6 +12,10 @@ savePlots = False
 # Initialize vehicles
 drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
 boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
+
+# Initialize data containers with the new VehicleData class
+droneData = VehicleData(drone)
+boatData = VehicleData(boat)
 
 # Create figures and axes conditionally
 if enableDroneWindow:
@@ -27,58 +31,49 @@ fig, axs = plt.subplots(3, 2, figsize=(12, 10))
 fig.suptitle("Live MAVLink Vehicle Monitor", fontsize=16)
 axs[2][1].axis('off')
 
-droneData = Variables(drone)
-boatData = Variables(boat)
-
 def update_plot(_):
-    # Drone
-    posD, attD, gpsD, velD, accD, angD, windD, simD = drone.get_latest_data()
+    # Update data containers (thread-safe)
+    droneData.update()
+    boatData.update()
 
-    droneData.set_data()
-    boatData.set_data()
-
-    if posD:
-        _, x, y, *_ = zip(*posD)
+    # Drone position plot
+    if droneData.position.x:
         axPosDrone.clear()
-        axPosDrone.plot(x, y, color=drone.color)
+        axPosDrone.plot(droneData.position.x, droneData.position.y, color=drone.color)
         axPosDrone.set_title("Drone Position (X, Y)")
         axPosDrone.axis('equal')
 
-    if attD:
-        _, roll, pitch, yaw, *_ = zip(*attD)
+    # Drone attitude plot
+    if droneData.attitude.roll:
         axAttDrone.clear()
-        axAttDrone.plot(roll, label='Roll')
-        axAttDrone.plot(pitch, label='Pitch')
-        axAttDrone.plot(yaw, label='Yaw')
+        axAttDrone.plot(droneData.attitude.roll, label='Roll')
+        axAttDrone.plot(droneData.attitude.pitch, label='Pitch')
+        axAttDrone.plot(droneData.attitude.yaw, label='Yaw')
         axAttDrone.set_title("Drone Attitude")
         axAttDrone.legend()
 
-    # Boat
-    posB, attB, gpsB, velB, accB, angB, windB, simB = boat.get_latest_data()
-    if posB:
-        _, x, y, *_ = zip(*posB)
+    # Boat position plot
+    if boatData.position.x:
         axPosBoat.clear()
-        axPosBoat.plot(x, y, color=boat.color)
+        axPosBoat.plot(boatData.position.x, boatData.position.y, color=boat.color)
         axPosBoat.set_title("Boat Position (X, Y)")
         axPosBoat.axis('equal')
 
-    if attB:
-        _, roll, pitch, yaw, *_ = zip(*attB)
+    # Boat attitude plot
+    if boatData.attitude.roll:
         axAttBoat.clear()
-        axAttBoat.plot(roll, label='Roll')
-        axAttBoat.plot(pitch, label='Pitch')
-        axAttBoat.plot(yaw, label='Yaw')
+        axAttBoat.plot(boatData.attitude.roll, label='Roll')
+        axAttBoat.plot(boatData.attitude.pitch, label='Pitch')
+        axAttBoat.plot(boatData.attitude.yaw, label='Yaw')
         axAttBoat.set_title("Boat Attitude")
         axAttBoat.legend()
 
-    # Global
+    # Global position plot
     axGlobalPos.clear()
-    if gpsD:
-        _, latD, lonD, *_ = zip(*gpsD)
-        axGlobalPos.plot(lonD, latD, label="Drone", color=drone.color)
-    if gpsB:
-        _, latB, lonB, *_ = zip(*gpsB)
-        axGlobalPos.plot(lonB, latB, label="Boat", color=boat.color)
+    if droneData.gps.lat:
+        axGlobalPos.plot(droneData.gps.lon, droneData.gps.lat, label="Drone", color=drone.color)
+    if boatData.gps.lat:
+        axGlobalPos.plot(boatData.gps.lon, boatData.gps.lat, label="Boat", color=boat.color)
     axGlobalPos.set_title("Global Position (Lat, Lon)")
     axGlobalPos.set_xlabel("Longitude")
     axGlobalPos.set_ylabel("Latitude")
@@ -88,41 +83,38 @@ def update_plot(_):
     # Update extra figures if enabled
     if enableDroneWindow:
         axDronePos.clear()
-        if posD:
-            _, xD, yD, *_ = zip(*posD)
-            axDronePos.plot(xD, yD, color=drone.color)
+        if droneData.position.x:
+            axDronePos.plot(droneData.position.x, droneData.position.y, color=drone.color)
             axDronePos.set_title("Drone (X, Y)")
+        
         axDroneAtt.clear()
-        if attD:
-            _, rollD, pitchD, yawD, *_ = zip(*attD)
-            axDroneAtt.plot(rollD, label='Roll')
-            axDroneAtt.plot(pitchD, label='Pitch')
-            axDroneAtt.plot(yawD, label='Yaw')
+        if droneData.attitude.roll:
+            axDroneAtt.plot(droneData.attitude.roll, label='Roll')
+            axDroneAtt.plot(droneData.attitude.pitch, label='Pitch')
+            axDroneAtt.plot(droneData.attitude.yaw, label='Yaw')
             axDroneAtt.set_title("Drone Attitude")
             axDroneAtt.legend()
 
     if enableBoatWindow:
         axBoatPos.clear()
-        if posB:
-            _, xB, yB, *_ = zip(*posB)
-            axBoatPos.plot(xB, yB, color=boat.color)
+        if boatData.position.x:
+            axBoatPos.plot(boatData.position.x, boatData.position.y, color=boat.color)
             axBoatPos.set_title("Boat (X, Y)")
+            
         axBoatAtt.clear()
-        if attB:
-            _, rollB, pitchB, yawB, *_ = zip(*attB)
-            axBoatAtt.plot(rollB, label='Roll')
-            axBoatAtt.plot(pitchB, label='Pitch')
-            axBoatAtt.plot(yawB, label='Yaw')
+        if boatData.attitude.roll:
+            axBoatAtt.plot(boatData.attitude.roll, label='Roll')
+            axBoatAtt.plot(boatData.attitude.pitch, label='Pitch')
+            axBoatAtt.plot(boatData.attitude.yaw, label='Yaw')
             axBoatAtt.set_title("Boat Attitude")
             axBoatAtt.legend()
 
-
     if enableGlobalWindow:
         axGlobal.clear()
-        if gpsD:
-            axGlobal.plot(lonD, latD, label='Drone', color=drone.color)
-        if gpsB:
-            axGlobal.plot(lonB, latB, label='Boat', color=boat.color)
+        if droneData.gps.lat:
+            axGlobal.plot(droneData.gps.lon, droneData.gps.lat, label='Drone', color=drone.color)
+        if boatData.gps.lat:
+            axGlobal.plot(boatData.gps.lon, boatData.gps.lat, label='Boat', color=boat.color)
         axGlobal.set_title("Global Position (Lat, Lon)")
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude")
@@ -139,7 +131,7 @@ try:
         update_plot(0)
         plt.pause(0.2)
 except KeyboardInterrupt:
-    # Save plots plt
+    # Save plots if requested
     print("Exiting...")
     if savePlots:
         fig.savefig(f"main_plot_{time.strftime('%Y%m%d_%H%M%S')}.png")
@@ -149,22 +141,15 @@ except KeyboardInterrupt:
             figBoat.savefig(f"boat_plot{boat.name}_{time.strftime('%Y%m%d_%H%M%S')}.png")
         if enableGlobalWindow:
             figGlobal.savefig(f"global_plot{time.strftime('%Y%m%d_%H%M%S')}.png")
-        plt.close(fig)
-        if enableDroneWindow:
-            plt.close(figDrone)
-
-        if enableBoatWindow:
-            plt.close(figBoat)
-        if enableGlobalWindow:
-            plt.close(figGlobal)
-    else:
-        plt.close(fig)
-        if enableDroneWindow:
-            plt.close(figDrone)
-        if enableBoatWindow:
-            plt.close(figBoat)
-        if enableGlobalWindow:
-            plt.close(figGlobal)
+    
+    # Close all plot windows
+    plt.close(fig)
+    if enableDroneWindow:
+        plt.close(figDrone)
+    if enableBoatWindow:
+        plt.close(figBoat)
+    if enableGlobalWindow:
+        plt.close(figGlobal)
+        
     print("Plots saved.")
     exit(0)
-
