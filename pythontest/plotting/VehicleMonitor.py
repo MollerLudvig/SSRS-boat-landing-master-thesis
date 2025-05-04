@@ -3,6 +3,8 @@ from threading import Thread, Lock
 import math
 import time
 
+save_history = 100
+
 class VehicleMonitor:
     def __init__(self, name, udpPort, save_CSV = True, color='blue', enableDroneWindow=True, enableBoatWindow=True, enableGlobalWindow=True):
         self.SIM_running = False
@@ -60,7 +62,7 @@ class VehicleMonitor:
                     vy = msg.vy
                     vz = msg.vz
                     self.posHistory.append((pos_time, x, y, z, vx, vy, vz))
-                    self.posHistory = self.posHistory[-100:]
+                    self.posHistory = self.posHistory[-save_history:]
                 elif msg.get_type() == 'ATTITUDE':
                     att_time = msg.time_boot_ms / 1000
                     roll = math.degrees(msg.roll)
@@ -70,7 +72,7 @@ class VehicleMonitor:
                     pitch_speed = math.degrees(msg.pitchspeed)
                     yaw_speed = math.degrees(msg.yawspeed)
                     self.attHistory.append((att_time, roll, pitch, yaw, roll_speed, pitch_speed, yaw_speed))
-                    self.attHistory = self.attHistory[-100:]
+                    self.attHistory = self.attHistory[-save_history:]
                 elif msg.get_type() == 'GLOBAL_POSITION_INT':
                     GPS_time = msg.time_boot_ms / 1000
                     lat = msg.lat / 1e7
@@ -82,26 +84,26 @@ class VehicleMonitor:
                     vz = msg.vz / 100
                     hdg = msg.hdg / 100
                     self.gpsHistory.append((GPS_time, lat, lon, alt,relative_alt, vx, vy, vz, hdg))
-                    self.gpsHistory = self.gpsHistory[-100:]
+                    self.gpsHistory = self.gpsHistory[-save_history:]
                 elif msg.get_type() == 'SCALED_IMU':
                     imu_time = msg.time_boot_ms / 1000
                     ax = msg.xacc / 1000
                     ay = msg.yacc / 1000
                     az = msg.zacc / 1000
                     self.linAccHistory.append((imu_time, ax, ay, az))
-                    self.linAccHistory = self.linAccHistory[-100:]
+                    self.linAccHistory = self.linAccHistory[-save_history:]
 
                     wx = msg.xgyro / 1000
                     wy = msg.ygyro / 1000
                     wz = msg.zgyro / 1000
                     self.angHistory.append((imu_time, wx, wy, wz))
-                    self.angHistory = self.angHistory[-100:]
+                    self.angHistory = self.angHistory[-save_history:]
                 elif msg.get_type() == 'WIND':
                     wind_time = time.time() # Time not provided in message
                     wind_speed = msg.speed
                     wind_direction = msg.direction
                     self.windHistory.append((wind_time, wind_speed, wind_direction))
-                    self.windHistory = self.windHistory[-100:]
+                    self.windHistory = self.windHistory[-save_history:]
                 # elif msg.get_type() == 'SIMSTATE':
                 #     self.SIM_running = True
                 #     sim_time = time.time()
@@ -117,7 +119,7 @@ class VehicleMonitor:
                 #     lat = msg.lat / 1e7
                 #     lon = msg.lng / 1e7
                 #     self.simStateHistory.append((sim_time, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon))
-                #     self.simStateHistory = self.simStateHistory[-100:]   
+                #     self.simStateHistory = self.simStateHistory[-save_history:]   
 
                 elif msg.get_type() == 'SIM_STATE':
                     self.SIM_running = True
@@ -138,7 +140,7 @@ class VehicleMonitor:
                     ve = msg.ve
                     vd = msg.vd
                     self.simStateHistory.append((sim_time, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, vn, ve, vd))
-                    self.simStateHistory = self.simStateHistory[-100:]
+                    self.simStateHistory = self.simStateHistory[-save_history:]
                 
                 
 
