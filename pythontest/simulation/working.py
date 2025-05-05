@@ -5,7 +5,6 @@ import time
 import numpy as np
 from redis_communication import RedisClient
 import WP_calculation as wp
-import matplotlib.pyplot as plt
 
 from Drone import Drone
 from Boat import Boat
@@ -90,8 +89,7 @@ def tester():
     wanted_sink_rates = []
     actual_sink_rates = []
     follow_diversion_data = {}
-    xs = [0]
-
+    xs = [0] 
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
