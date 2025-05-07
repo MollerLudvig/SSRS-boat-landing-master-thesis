@@ -7,11 +7,11 @@ import argparse
 save_history = 100
 
 class VehicleMonitor:
-    def __init__(self, connection_string, save_CSV=True, color='blue', 
+    def __init__(self,name, udp, save_CSV=True, color='blue', 
                  enableDroneWindow=True, enableBoatWindow=True, enableGlobalWindow=True):
         self.SIM_running = False
         self.save_CSV = save_CSV
-        self.connection_string = connection_string
+        self.udp = udp
         self.color = color
 
         self.enableDroneWindow = enableDroneWindow
@@ -43,8 +43,8 @@ class VehicleMonitor:
     def _connect(self):
         """Establish connection to the vehicle"""
         try:
-            print(f"Connecting to vehicle via {self.connection_string}...")
-            self.conn = mavutil.mavlink_connection(self.connection_string)
+            print(f"Connecting to vehicle via {self.udp}...")
+            self.conn = mavutil.mavlink_connection(self.udp)
             print("Waiting for heartbeat...")
             self.conn.wait_heartbeat(timeout=10)
             print(f"Heartbeat received from system (system {self.conn.target_system}, component {self.conn.target_component})")

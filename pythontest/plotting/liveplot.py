@@ -1,23 +1,34 @@
 import matplotlib.pyplot as plt
-from pymavlink import mavutil
+# from pymavlink import mavutil
 import time
 import numpy as np
 from VehicleMonitor import VehicleMonitor
 from variabels import VehicleData  # Import the VehicleData class
+from redisCallbacks import RedisCallbacks
+from redis_communication import RedisClient
 
 # Configure window display options
 enableGlobalWindow = True
-enableDroneAttitudeWindow = True
-enableBoatAttitudeWindow = True
-enableDroneVelocityWindow = True
-enableBoatVelocityWindow = True
-enableRelativeVelocityWindow = True
-enableWindWindow = True
+enableDroneAttitudeWindow = False
+enableBoatAttitudeWindow = False
+enableDroneVelocityWindow = False
+enableBoatVelocityWindow = False
+enableRelativeVelocityWindow = False
+enableWindWindow = False
+
+
 savePlots = False
 
-# Initialize vehicles
-drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
-boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
+redis_client = RedisClient(host="localhost", port=6379)
+callbacks = RedisCallbacks(redis_client)
+print("Redis client initialized.")
+callbacks.start_listening()
+print("Redis callbacks started.")
+
+
+# Initialize vehicles  
+drone = VehicleMonitor(name="Drone", udp='udp:127.0.0.1:14551', color='blue')
+boat = VehicleMonitor(name="Boat", udp='udp:127.0.0.1:14561', color='green')
 
 # Initialize data containers with the VehicleData class
 droneData = VehicleData(drone)
@@ -128,6 +139,10 @@ def update_plot(_):
         elif boatData.gps.lat:
             axGlobal.plot(boatData.gps.lon, boatData.gps.lat, 
                          'o-', label="Boat (GPS)", color=boat.color, alpha=0.7)
+            
+        if callbacks.P1_data:
+            axGlobal.plot(callbacks.P1_data.lon, callbacks.P1_data.lat, 
+                         'o-', label="P1 (SIM)", color='purple')
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 

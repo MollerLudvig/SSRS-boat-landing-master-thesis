@@ -83,7 +83,6 @@ class SimulationData:
     vy: Optional[List[float]] = None
     vz: Optional[List[float]] = None
 
-
 class VehicleData:
     """
     Structured container for vehicle data that safely stores data from VehicleMonitor.
