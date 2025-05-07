@@ -143,9 +143,9 @@ def update_plot(_):
             axGlobal.plot(boatData.gps.lon, boatData.gps.lat, 
                          'o-', label="Boat (GPS)", color=boat.color, alpha=0.7)
             
-        # if callbacks.P1:
-        #     axGlobal.plot(callbacks.P1.lon, callbacks.P1.lat, 
-        #                  'o-', label="P1 (SIM)", color='purple')
+        if callbacks.P1:
+            axGlobal.plot(callbacks.P1.lon, callbacks.P1.lat, 
+                         'o-', label="P1 (SIM)", color='purple')
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 
