@@ -130,70 +130,70 @@ class VehicleData:
                 self.position.vy = list(vys)
                 self.position.vz = list(vzs)
 
-        if att:
-            times, rolls, pitches, yaws, roll_speeds, pitch_speeds, yaw_speeds = zip(*att)
-            self.attitude.time = list(times)
-            self.attitude.roll = list(rolls)
-            self.attitude.pitch = list(pitches)
-            self.attitude.yaw = list(yaws)
-            self.attitude.roll_speed = list(roll_speeds)
-            self.attitude.pitch_speed = list(pitch_speeds)
-            self.attitude.yaw_speed = list(yaw_speeds)
+            if att:
+                times, rolls, pitches, yaws, roll_speeds, pitch_speeds, yaw_speeds = zip(*att)
+                self.attitude.time = list(times)
+                self.attitude.roll = list(rolls)
+                self.attitude.pitch = list(pitches)
+                self.attitude.yaw = list(yaws)
+                self.attitude.roll_speed = list(roll_speeds)
+                self.attitude.pitch_speed = list(pitch_speeds)
+                self.attitude.yaw_speed = list(yaw_speeds)
 
-        if gps:
-            times, lats, lons, alts, rel_alts, vxs, vys, vzs, hdgs = zip(*gps)
-            self.gps.time = list(times)
-            self.gps.lat = list(lats)
-            self.gps.lon = list(lons)
-            self.gps.alt = list(alts)
-            self.gps.relative_alt = list(rel_alts)
-            self.gps.vx = list(vxs)
-            self.gps.vy = list(vys)
-            self.gps.vz = list(vzs)
-            self.gps.hdg = list(hdgs)
+            if gps:
+                times, lats, lons, alts, rel_alts, vxs, vys, vzs, hdgs = zip(*gps)
+                self.gps.time = list(times)
+                self.gps.lat = list(lats)
+                self.gps.lon = list(lons)
+                self.gps.alt = list(alts)
+                self.gps.relative_alt = list(rel_alts)
+                self.gps.vx = list(vxs)
+                self.gps.vy = list(vys)
+                self.gps.vz = list(vzs)
+                self.gps.hdg = list(hdgs)
 
-        if acc and ang:
-            # Combining accelerometer and gyroscope data
-            acc_times, axs, ays, azs = zip(*acc)
-            ang_times, wxs, wys, wzs = zip(*ang)
+            if acc and ang:
+                # Combining accelerometer and gyroscope data
+                acc_times, axs, ays, azs = zip(*acc)
+                ang_times, wxs, wys, wzs = zip(*ang)
+                
+                # Assuming both have the same timestamps, otherwise you might need more complex logic
+                self.imu.time = list(acc_times)
+                self.imu.ax = list(axs)
+                self.imu.ay = list(ays)
+                self.imu.az = list(azs)
+                self.imu.wx = list(wxs)
+                self.imu.wy = list(wys)
+                self.imu.wz = list(wzs)
             
-            # Assuming both have the same timestamps, otherwise you might need more complex logic
-            self.imu.time = list(acc_times)
-            self.imu.ax = list(axs)
-            self.imu.ay = list(ays)
-            self.imu.az = list(azs)
-            self.imu.wx = list(wxs)
-            self.imu.wy = list(wys)
-            self.imu.wz = list(wzs)
-        
-        if wind:
-            times, speeds, directions = zip(*wind)
-            self.wind.time = list(times)
-            self.wind.speed = list(speeds)
-            self.wind.direction = list(directions)
+            if wind:
+                times, speeds, directions = zip(*wind)
+                self.wind.time = list(times)
+                self.wind.speed = list(speeds)
+                self.wind.direction = list(directions)
 
-        if sim:
-            # Unpack simulation data
-            (times, rolls, pitches, yaws, xaccs, yaccs, zaccs, 
-             xgyros, ygyros, zgyros, lats, lons, alts, 
-             vns, ves, vds) = zip(*sim)
-            
-            self.simulation.time = list(times)
-            self.simulation.roll = list(rolls)
-            self.simulation.pitch = list(pitches)
-            self.simulation.yaw = list(yaws)
-            self.simulation.xacc = list(xaccs)
-            self.simulation.yacc = list(yaccs)
-            self.simulation.zacc = list(zaccs)
-            self.simulation.xgyro = list(xgyros)
-            self.simulation.ygyro = list(ygyros)
-            self.simulation.zgyro = list(zgyros)
-            self.simulation.lat = list(lats)
-            self.simulation.lon = list(lons)
-            self.simulation.alt = list(alts)
-            self.simulation.vn = list(vns)
-            self.simulation.ve = list(ves)
-            self.simulation.vd = list(vds)
+            if sim:
+                # Unpack simulation data
+                (times, rolls, pitches, yaws, xaccs, yaccs, zaccs, 
+                xgyros, ygyros, zgyros, lats, lons, alts, 
+                vns, ves, vds) = zip(*sim)
+                
+                self.simulation.time = list(times)
+                self.simulation.roll = list(rolls)
+                self.simulation.pitch = list(pitches)
+                self.simulation.yaw = list(yaws)
+                self.simulation.xacc = list(xaccs)
+                self.simulation.yacc = list(yaccs)
+                self.simulation.zacc = list(zaccs)
+                self.simulation.xgyro = list(xgyros)
+                self.simulation.ygyro = list(ygyros)
+                self.simulation.zgyro = list(zgyros)
+                self.simulation.lat = list(lats)
+                self.simulation.lon = list(lons)
+                self.simulation.alt = list(alts)
+                self.simulation.vn = list(vns)
+                self.simulation.ve = list(ves)
+                self.simulation.vd = list(vds)
 
     def get_latest_position(self):
         """Return the most recent position data point in a thread-safe manner"""
