@@ -7,11 +7,12 @@ import argparse
 save_history = 100
 
 class VehicleMonitor:
-    def __init__(self,name, udp, save_CSV=True, color='blue', 
+    def __init__(self,name, udpPort, save_CSV=True, color='blue', 
                  enableDroneWindow=True, enableBoatWindow=True, enableGlobalWindow=True):
         self.SIM_running = False
         self.save_CSV = save_CSV
-        self.udp = udp
+        self.udpPort = udpPort
+        self.name = name
         self.color = color
 
         self.enableDroneWindow = enableDroneWindow
@@ -43,18 +44,19 @@ class VehicleMonitor:
     def _connect(self):
         """Establish connection to the vehicle"""
         try:
-            print(f"Connecting to vehicle via {self.udp}...")
-            self.conn = mavutil.mavlink_connection(self.udp)
-            print("Waiting for heartbeat...")
-            self.conn.wait_heartbeat(timeout=10)
-            print(f"Heartbeat received from system (system {self.conn.target_system}, component {self.conn.target_component})")
-            
+            print(f"[{self.name}] Connecting to vehicle...")
+            self.conn = mavutil.mavlink_connection(f'udp:127.0.0.1:{self.udpPort}')
+            print(f"[{self.name}] Waiting for heartbeat...")
+            self.conn.wait_heartbeat()
+            print(f"[{self.name}] Heartbeat received")
+
+
             # Request high-rate data
             self.conn.mav.request_data_stream_send(
                 self.conn.target_system,
                 self.conn.target_component,
                 mavutil.mavlink.MAV_DATA_STREAM_ALL,
-                50,  # Hz
+                50, # Hz
                 1 
             )
             

@@ -27,8 +27,11 @@ print("Redis callbacks started.")
 
 
 # Initialize vehicles  
-drone = VehicleMonitor(name="Drone", udp='udp:127.0.0.1:14551', color='blue')
-boat = VehicleMonitor(name="Boat", udp='udp:127.0.0.1:14561', color='green')
+drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
+boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
+
+drone.connect()
+boat.connect()
 
 # Initialize data containers with the VehicleData class
 droneData = VehicleData(drone)
@@ -140,9 +143,9 @@ def update_plot(_):
             axGlobal.plot(boatData.gps.lon, boatData.gps.lat, 
                          'o-', label="Boat (GPS)", color=boat.color, alpha=0.7)
             
-        if callbacks.P1_data:
-            axGlobal.plot(callbacks.P1_data.lon, callbacks.P1_data.lat, 
-                         'o-', label="P1 (SIM)", color='purple')
+        # if callbacks.P1:
+        #     axGlobal.plot(callbacks.P1.lon, callbacks.P1.lat, 
+        #                  'o-', label="P1 (SIM)", color='purple')
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 
@@ -474,6 +477,10 @@ try:
 except KeyboardInterrupt:
     # Save plots if requested
     print("Exiting...")
+
+    # Stop listening to Redis
+    callbacks.stop_listening()
+
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
         if enableGlobalWindow:
