@@ -5,7 +5,6 @@ import time
 import numpy as np
 from redis_communication import RedisClient
 import WP_calculation as wp
-import matplotlib.pyplot as plt
 
 from Drone import Drone
 from Boat import Boat
@@ -31,8 +30,8 @@ def tester():
     verbose = True
     use_filter = False
     started_descent = False # Bool to keep track when descent is started
-    fluct_boat_movement = False
-    fluct_boat_alt = False
+    fluct_boat_movement = True
+    fluct_boat_alt = True
     fluct_drone_throttle = False
 
     # PARAMETERS:
@@ -90,8 +89,10 @@ def tester():
     wanted_sink_rates = []
     actual_sink_rates = []
     follow_diversion_data = {}
-    xs = [0]
-
+    P1_message = {}
+    P2_message = {}
+    P3_message = {}
+    xs = [0] 
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
@@ -144,9 +145,6 @@ def tester():
         drone_wind_msg = drone.get_message('WIND')
         wind_speed = drone_wind_msg.speed
         wind_direction = drone_wind_msg.direction # 0 is wind blowing negative latitude (south?)
-        # Add cos(wind_direction) to stall speed? Also depends on drone heading actually. 
-        # wind_speed*cos(drone.heading - wind_direction) Maybe? If they are the same we get wind_speed
-        # If they are offset by 90 we get 0
 
         print(f"Wind Speed: {wind_speed}")
         print(f"Wind Direction: {wind_direction}")
@@ -192,6 +190,20 @@ def tester():
 
         P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
         P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
+        P2_message.update({"time": time.time(),
+                          "lat": P2_lat,
+                          "lon": P2_lon,
+                          "alt": cruise_altitude})
+        rc.send_message('P2', P2_message)
+
+        P1_lat, P1_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading-180, 20)
+        P1_distance = wp.dist_between_coords(P1_lat, P1_lon, boat.deck_lat, boat.deck_lon)
+        P1_message.update({"time": time.time(),
+                           "lat": P1_lat,
+                           "lon": P1_lon,
+                           "alt": cruise_altitude})
+        rc.send_message('P1', P1_message)
+
 
         follow_diversion_data.update({"P2_distance": P2_distance,
                                 "stall_speed": drone_total_stall_speed,
@@ -199,7 +211,17 @@ def tester():
                                 "drone_distance": drone_distance_to_boat})
                     
         rc.add_stream_message("follow diversion", follow_diversion_data)
-        
+
+        boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
+
+            # Calculate where P3 (landing point) is
+        P3_lat, P3_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, boat_distance_to_target)
+        P3_message.update({"time": time.time(),
+                           "lat": P3_lat,
+                           "lon": P3_lon,
+                           "alt": boat.altitude})
+        rc.send_message('P3', P3_message)
+
         iterator += 1
 
         # Follow boat
@@ -208,8 +230,6 @@ def tester():
             # Move boat
             boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
-
-            P1_distance = P2_distance + 20
 
             # Set boat's last recieved position as a waypoint for the drone
             target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, 40)
@@ -235,15 +255,8 @@ def tester():
             print(f"Drone altitude: {drone.altitude}")
             print("\n")
 
-            # Calculate drone distance to boat and boat distance to P3 (target)
-            boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
-
-            # Calculate where P3 (landing point) is
-            P3_lat, P3_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, boat_distance_to_target)
-
             # If drone is behind P2 + lookahead it should just keep flying towards the boat at cruise_altitude
             if (drone_distance_to_boat > P2_distance + descent_lookahead) and (not started_descent):
-                boat.set_speed(desired_boat_speed)
                 boat.set_speed(desired_boat_speed)
 
                 print(f"P2 distance: {P2_distance}")

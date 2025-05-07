@@ -14,9 +14,7 @@ enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
-enableWindWindow = False
-
-
+enableWindWindow = True
 savePlots = False
 
 redis_client = RedisClient(host="localhost", port=6379)
@@ -447,8 +445,8 @@ def update_plot(_):
     if enableWindWindow and len(axsWind) == 2:
         # Wind speed
         axsWind[0].clear()
-        if boatData.wind.speed:  # Assuming wind data comes from boat
-            axsWind[0].plot(boatData.wind.time, boatData.wind.speed, label='Wind Speed', color='cyan')
+        if droneData.wind.speed:  # Assuming wind data comes from boat
+            axsWind[0].plot(droneData.wind.time, droneData.wind.speed, label='Wind Speed', color='cyan')
             axsWind[0].set_title("Wind Speed")
             axsWind[0].set_ylabel("m/s")
             axsWind[0].legend()
@@ -456,8 +454,8 @@ def update_plot(_):
         
         # Wind direction
         axsWind[1].clear()
-        if boatData.wind.direction:
-            axsWind[1].plot(boatData.wind.time, boatData.wind.direction, label='Wind Direction', color='magenta')
+        if droneData.wind.direction:
+            axsWind[1].plot(droneData.wind.time, droneData.wind.direction, label='Wind Direction', color='magenta')
             axsWind[1].set_title("Wind Direction")
             axsWind[1].set_ylabel("Degrees")
             axsWind[1].set_xlabel("Time (s)")
