@@ -81,6 +81,8 @@ def tester():
     if verbose:
         print("Redis client initialized")
     # For missionhandler abort condition
+    rc.add_stream_message("needed_glide_ratio", Gr)
+    rc.add_stream_message("stage", "started")
     rc.send_message("needed_glide_ratio", Gr)
     rc.send_message("stage", "started")
 
@@ -210,6 +212,7 @@ def tester():
                                 "boat_speed": boat.speed,
                                 "drone_distance": drone_distance_to_boat})
                     
+        rc.add_stream_message("follow diversion", follow_diversion_data)
         rc.send_message("follow diversion", follow_diversion_data)
 
         boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
@@ -359,10 +362,12 @@ def tester():
                 rc.send_message("drone data", drone.data)
                 rc.send_message("boat data", boat.data)
                 rc.send_message("needed_glide_ratio", needed_Gr)
+                rc.add_stream_message("needed_glide_ratio", Gr)
 
                 # Drone has landed on boat
                 if drone.altitude < boat.altitude + 1.5:
                     rc.send_message("stage", "diversion")
+                    rc.
 
                 landing_iterator += 1
 
@@ -383,6 +388,7 @@ def tester():
             # Go follow mode after diversion
             rc.send_message("stage", "follow")
             # Set the Gr to the wanted Gr so the last needed_Gr is not saved
+            rc.add_stream_message("needed_glide_ratio", Gr)
             rc.send_message("needed_glide_ratio", Gr)
         
         elif drone.stage == "exit":
