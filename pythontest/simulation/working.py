@@ -31,7 +31,7 @@ def tester():
     use_filter = False
     started_descent = False # Bool to keep track when descent is started
     fluct_boat_movement = True
-    fluct_boat_alt = True
+    fluct_boat_alt = False
     fluct_drone_throttle = False
 
     # PARAMETERS:
@@ -172,12 +172,15 @@ def tester():
         desired_boat_speed = drone.speed - impact_speed
 
         # Fluctuate values
+        # Random noise to desired heading
+        # commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
+        #                                   boat_movement_fluctuation, desired_boat_direction)
+
+        # # Make sure boat is moving roughly in desired direction before fluctuating         
+        # if abs((boat.heading - desired_boat_direction + 180) % 360 - 180) <= 5:
+        # Random walk for heading
         commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
-                                          boat_movement_fluctuation, desired_boat_direction)
-        
-        if abs((boat.heading - desired_boat_direction + 180) % 360 - 180) <= 5:
-            commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
-                                          boat_movement_fluctuation, boat.heading)
+                                    boat_movement_fluctuation, boat.heading)
         
         commanded_boat_altitude = fl.boat_altitude(fluct_boat_alt, boat_alt_fluctuation, 
                                          desired_boat_altitude, iterator)
@@ -214,13 +217,20 @@ def tester():
 
         boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
 
-            # Calculate where P3 (landing point) is
+        # Calculate where P3 (landing point) is
         P3_lat, P3_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, boat_distance_to_target)
         P3_message.update({"time": time.time(),
                            "lat": P3_lat,
                            "lon": P3_lon,
                            "alt": boat.altitude})
         rc.send_message('P3', P3_message)
+
+        distance_to_current_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
+
+        # Point before P3 to help the drone line up behind the boat better
+        # Especially when the boat is maneuvering
+        intermediate_dist = distance_to_current_P3*2/3
+        intermediate_P3_lat, intermediate_P3_lon = wp.calc_look_ahead_point(P3_lat, P3_lon, boat.heading-180, intermediate_dist)
 
         iterator += 1
 
@@ -298,7 +308,6 @@ def tester():
                 print("\n")
 
                 # Calculate distance to new P3 and set prev_P3 to new P3
-                distance_to_current_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
                 prev_P3_lat, prev_P3_lon = P3_lat, P3_lon
 
                 # Update prev_Gr
@@ -371,8 +380,9 @@ def tester():
 
                 landing_iterator += 1
 
-                drone.follow_target([P3_lat, boat_target_lat], [P3_lon, boat_target_lon], 
-                                    [boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
+                drone.follow_target([intermediate_P3_lat, P3_lat, boat_target_lat], 
+                                    [intermediate_P3_lon, P3_lon, boat_target_lon], 
+                                    [boat.altitude, boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
 
         elif drone.stage == "diversion":
             print("DIVERTING", flush=True)
@@ -484,6 +494,7 @@ def start_vehicles_simulation(drone, boat, base_throttle):
     drone.set_parameter("TECS_VERT_ACC", 8) # Default: 7
     drone.set_parameter("TECS_INTEG_GAIN", 0.5) # Default: 0.3
     drone.set_parameter("TECS_LAND_TCONST", 1.0) # Default 2.0
+    drone.set_parameter("WP_RADIUS", 5) # Default 90
 
     sleep(2)
 
@@ -506,6 +517,6 @@ def start_vehicles_simulation(drone, boat, base_throttle):
     boat.takeoff(3)
     sleep(6)
     drone.set_servo(3, base_throttle)
-    sleep(3)
+    sleep(1)
 
     print("Takeoff complete")

@@ -1,5 +1,7 @@
 import numpy as np
 
+# np.random.seed(6)
+
 def boat_movement(flag, magnitude, desired_boat_direction):
     boat_heading_fluct = magnitude*2*(np.random.rand()-0.5)
     noisy_boat_direction = desired_boat_direction + boat_heading_fluct
