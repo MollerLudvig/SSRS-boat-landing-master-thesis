@@ -6,6 +6,8 @@ from VehicleMonitor import VehicleMonitor
 from variabels import VehicleData  # Import the VehicleData class
 from redisCallbacks import RedisCallbacks
 from redis_communication import RedisClient
+from threading import Thread, Lock
+
 
 # Configure window display options
 enableGlobalWindow = True
@@ -14,7 +16,7 @@ enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
-enableWindWindow = True
+enableWindWindow = False
 savePlots = False
 
 redis_client = RedisClient(host="localhost", port=6379)
@@ -63,6 +65,8 @@ if enableRelativeVelocityWindow:
 if enableWindWindow:
     figWind, axsWind = plt.subplots(2, 1, figsize=(8, 8), num="Wind Data")
     figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
+
+
 
 def get_vector_magnitude(x, y, z=0):
     """Calculate the magnitude of a vector"""
@@ -476,27 +480,25 @@ except KeyboardInterrupt:
     # Save plots if requested
     print("Exiting...")
 
-    # Stop listening to Redis
-    callbacks.stop_listening()
-
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
         if enableGlobalWindow:
-            figGlobal.savefig(f"global_position_{timestamp}.png")
+            figGlobal.savefig(f"plots/global_position_{timestamp}.png")
         if enableDroneAttitudeWindow:
-            figDroneAtt.savefig(f"drone_attitude_{timestamp}.png")
+            figDroneAtt.savefig(f"plots/drone_attitude_{timestamp}.png")
         if enableBoatAttitudeWindow:
-            figBoatAtt.savefig(f"boat_attitude_{timestamp}.png")
+            figBoatAtt.savefig(f"plots/boat_attitude_{timestamp}.png")
         if enableDroneVelocityWindow:
-            figDroneVel.savefig(f"drone_velocity_{timestamp}.png")
+            figDroneVel.savefig(f"plots/drone_velocity_{timestamp}.png")
         if enableBoatVelocityWindow:
-            figBoatVel.savefig(f"boat_velocity_{timestamp}.png")
+            figBoatVel.savefig(f"plots/boat_velocity_{timestamp}.png")
         if enableRelativeVelocityWindow:
-            figRelVel.savefig(f"relative_velocity_{timestamp}.png")
+            figRelVel.savefig(f"plots/relative_velocity_{timestamp}.png")
         if enableWindWindow:
-            figWind.savefig(f"wind_data_{timestamp}.png")
+            figWind.savefig(f"plots/wind_data_{timestamp}.png")
         print("Plots saved.")
-    
+    else:
+        print("No plots saved")    
     # Close all plot windows
     plt.close('all')
     exit(0)
