@@ -83,7 +83,10 @@ def tester():
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     rc.add_stream_message("stage", "started")
-    rc.send_message("needed_glide_ratio", Gr)
+    gr_message.update({"time": timestamp,
+                    "Gr": Gr,
+                    "needed_Gr": Gr})
+    rc.send_message("glide ratio", gr_message)
     rc.send_message("stage", "started")
 
     drone_coordinates = []
@@ -91,6 +94,7 @@ def tester():
     P1_message = {}
     P2_message = {}
     P3_message = {}
+    gr_message = {}
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
@@ -205,13 +209,13 @@ def tester():
                            "alt": cruise_altitude})
         rc.send_message('P1', P1_message)
 
-
         follow_diversion_data.update({"time": timestamp,
-                                "P2_distance": P2_distance,
-                                "stall_speed": drone_total_stall_speed,
-                                "boat_speed": boat.speed,
-                                "drone_distance": drone_distance_to_boat})
-                    
+                                        "P2_distance": P2_distance,
+                                        "stall_speed": drone_total_stall_speed,
+                                        "boat_speed": boat.speed,
+                                        "drone_distance": drone_distance_to_boat})
+                
+
         rc.add_stream_message("follow diversion", follow_diversion_data)
         rc.send_message("follow diversion", follow_diversion_data)
 
@@ -361,13 +365,16 @@ def tester():
                 # Send data to redis stream
                 rc.send_message("drone data", drone.data)
                 rc.send_message("boat data", boat.data)
-                rc.send_message("needed_glide_ratio", needed_Gr)
-                rc.add_stream_message("needed_glide_ratio", Gr)
+                gr_message.update({"time": timestamp,
+                                   "Gr": Gr,
+                                   "needed_Gr": needed_Gr})
+                rc.send_message("glide ratio", gr_message)
+                rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
                 # Drone has landed on boat
                 if drone.altitude < boat.altitude + 1.5:
                     rc.send_message("stage", "diversion")
-                    rc.
+                    rc.add_stream_message("stage", "diversion")
 
                 landing_iterator += 1
 
@@ -387,9 +394,13 @@ def tester():
             sleep(3)
             # Go follow mode after diversion
             rc.send_message("stage", "follow")
+            rc.add_stream_message("stage", "follow")
             # Set the Gr to the wanted Gr so the last needed_Gr is not saved
             rc.add_stream_message("needed_glide_ratio", Gr)
-            rc.send_message("needed_glide_ratio", Gr)
+            gr_message.update({"time": timestamp,
+                                "Gr": Gr,
+                                "needed_Gr": needed_Gr})
+            rc.send_message("glide ratio", gr_message)
         
         elif drone.stage == "exit":
             # Shut down connection and gazebo
