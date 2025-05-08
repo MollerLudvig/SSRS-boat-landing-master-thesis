@@ -59,6 +59,8 @@ class VehicleMonitor:
                 50, # Hz
                 1 
             )
+            # self.request_message_rates()
+            # self.set_ardupilot_stream_rates()
             
             self.is_connected = True
             return True
@@ -168,6 +170,61 @@ class VehicleMonitor:
             self.conn.close()
             print("Connection closed")
 
+    # For ArduPilot
+    def set_ardupilot_stream_rates(self):
+        # For primary communication channel (0)
+        self.conn.param_set_send("SR0_POSITION", 50)   # Position messages at 50Hz
+        self.conn.param_set_send("SR0_ATTITUDE", 50)   # Attitude at 50Hz
+        self.conn.param_set_send("SR0_EXTRA1", 50)     # RC channels and IMU
+        self.conn.param_set_send("SR0_EXTRA2", 50)     # VFR_HUD
+        self.conn.param_set_send("SR0_EXTRA3", 50)     # Additional data
+        self.conn.param_set_send("SR0_RAW_SENS", 50)   # Raw sensor data
+
+
+    def request_message_rates(self):
+        """Request specific message rates using the modern MAVLink approach"""
+        # Dictionary of message types and their desired rates in Hz
+        message_types = {
+            'LOCAL_POSITION_NED': 50,
+            'ATTITUDE': 50,
+            'GLOBAL_POSITION_INT': 50,
+            'SCALED_IMU': 50,
+            'WIND': 10,  # Wind data usually doesn't change as rapidly
+            'SIM_STATE': 50
+        }
+        
+        # MAVLink message IDs for each message type
+        mavlink_ids = {
+            'LOCAL_POSITION_NED': mavutil.mavlink.MAVLINK_MSG_ID_LOCAL_POSITION_NED,
+            'ATTITUDE': mavutil.mavlink.MAVLINK_MSG_ID_ATTITUDE,
+            'GLOBAL_POSITION_INT': mavutil.mavlink.MAVLINK_MSG_ID_GLOBAL_POSITION_INT,
+            'SCALED_IMU': mavutil.mavlink.MAVLINK_MSG_ID_SCALED_IMU,
+            'WIND': mavutil.mavlink.MAVLINK_MSG_ID_WIND,
+            'SIM_STATE': mavutil.mavlink.MAVLINK_MSG_ID_SIM_STATE
+        }
+        
+        for msg_type, rate in message_types.items():
+            # Convert Hz to microseconds
+            interval_us = int(1000000 / rate)
+            
+            print(f"Setting {msg_type} rate to {rate} Hz (interval: {interval_us} μs)")
+            
+            self.conn.mav.command_long_send(
+                self.conn.target_system,
+                self.conn.target_component,
+                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+                0,                     # Confirmation
+                mavlink_ids[msg_type], # Message ID
+                interval_us,           # Interval in microseconds
+                0, 0, 0, 0, 0          # Unused parameters
+            )
+            
+            # Small delay to avoid flooding the vehicle with commands
+            time.sleep(0.1)
+
+
+
+
 
 # Example usage
 if __name__ == "__main__":
@@ -201,3 +258,6 @@ if __name__ == "__main__":
             vehicle.close()
     else:
         print("Failed to connect to vehicle.")
+
+
+    
