@@ -30,7 +30,9 @@ def tester():
     verbose = True
     use_filter = False
     started_descent = False # Bool to keep track when descent is started
-    fluct_boat_movement = True
+    diversion_started = False # Check if diversion is started
+    diversion_point_reached = False # Check if divesrion point is reached
+    fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
 
@@ -42,9 +44,10 @@ def tester():
     boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     altitude_error_gain = 0.2
     speed_gain = 0.2
+    diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 6 # Heading in degrees
+    boat_movement_fluctuation = 2 # Heading in degrees
     boat_alt_fluctuation = 4 # Meters
     throttle_fluct = 50
 
@@ -103,6 +106,9 @@ def tester():
     while True:
 
         drone.update_possition_mavlink()
+
+        drone_mission_msg = drone.get_message("MISSION_CURRENT")
+        current_wp = drone_mission_msg.seq
         
         if iterator == 0 and use_filter:
             # kf = KalmanFilterXY(v = boat.speed, psi = boat.heading, init_lat = boat.deck_lat, init_lon = boat.deck_lon)
@@ -245,7 +251,8 @@ def tester():
             target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, 40)
             drone.follow_target([target_lat], [target_lon], [cruise_altitude])
 
-            # CHANGE FOR REAL WORLD: Set drone speed and not boat speed
+            # Dont just calculate dist between drone and P1 because it will still be 
+            # Positive if drone is in front of P1
             dist_behind_P1 = drone_distance_to_boat - P1_distance
             wanted_boat_speed = drone.speed - dist_behind_P1*speed_gain
             boat.set_speed(max(drone_total_stall_speed, wanted_boat_speed)) # Drone stall speed is also affected by wind
@@ -392,13 +399,26 @@ def tester():
 
             # Allow going into follow mode and starting a new descent
             started_descent = False
-            # Implement actual diversion manuever and not just RTL for 3 sec
-            drone.set_mode("RTL")
-            sleep(3)
-            # Go follow mode after diversion
-            rc.add_stream_message("stage", "follow")
-            # Set the Gr to the wanted Gr so the last needed_Gr is not saved
-            rc.add_stream_message("needed_glide_ratio", Gr)
+
+            # Can be made into a method in Drone class
+            if not diversion_started:
+                diversion_lat, diversion_lon = wp.calc_look_ahead_point(drone.lat, drone.lon, drone.heading+110, diversion_distance)
+                return_lat, return_lon = wp.calc_look_ahead_point(drone.lat, drone.lon, drone.heading, 20)
+
+                drone.follow_target([diversion_lat, return_lat],
+                                    [diversion_lon, return_lon],
+                                    [cruise_altitude, cruise_altitude])
+                diversion_started = True
+            
+            dist_to_return_point = wp.dist_between_coords(drone.lat, drone.lon, 
+                                                             return_lat, return_lon)
+        
+            if dist_to_return_point < 25 and current_wp == 2:
+                # Go follow mode after diversion
+                rc.add_stream_message("stage", "follow")
+                # Set the Gr to the wanted Gr so the last needed_Gr is not saved
+                rc.add_stream_message("needed_glide_ratio", Gr)
+                diversion_started = False
         
         elif drone.stage == "exit":
             # Shut down connection and gazebo
