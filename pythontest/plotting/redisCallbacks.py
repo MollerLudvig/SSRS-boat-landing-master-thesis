@@ -79,7 +79,7 @@ class RedisCallbacks:
         self.redis_client.add_subscriber('stage', self.update_stage_data)
         print("Callbacks set up for Redis channels", flush=True)
 
-    def update_p1_position(self, content):
+    def update_p1_position(self, timestamp, content):
         """Callback for P1 position updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
@@ -90,7 +90,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for P1 position: {content}", flush=True)
 
-    def update_p2_position(self, content):
+    def update_p2_position(self, timestamp, content):
         """Callback for P2 position updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
@@ -102,7 +102,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for P2 position: {content}", flush=True)
 
-    def update_p3_position(self, content):
+    def update_p3_position(self, timestamp, content):
         """Callback for P3 position updates"""
         if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
             with Lock():
@@ -113,7 +113,7 @@ class RedisCallbacks:
         else:
             print(f"Invalid data format for P3 position: {content}", flush=True)
 
-    def update_drone_data(self, content):
+    def update_drone_data(self, timestamp, content):
         """Callback for drone data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'xs', 'altitude', 'z_wanted', 'needed_sr', 'wanted_sr', 'actual_sr', 'Gr']):
@@ -128,7 +128,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for drone data: {content}", flush=True)
 
-    def update_boat_data(self, content):
+    def update_boat_data(self, timestamp, content):
         """Callback for boat data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'kf_x', 'kf_y', 'kf_lat', 'kf_lon', 'kf_speed', 'kf_heading', 'real_heading', 'real_lat', 'real_lon']):
@@ -145,7 +145,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for boat data: {content}", flush=True)
 
-    def update_follow_diversion_data(self, content):
+    def update_follow_diversion_data(self, timestamp, content):
         """Callback for follow diversion data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'drone_distance', 'stall_speed', 'P2_distance', 'boat_speed']):
@@ -157,7 +157,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for follow diversion data: {content}", flush=True)
     
-    def update_gr_data(self, content):
+    def update_gr_data(self, timestamp, content):
         """Callback for glide ratio data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'needed_gr']):
@@ -166,7 +166,7 @@ class RedisCallbacks:
             else:
                 print(f"Invalid data format for glide ratio data: {content}", flush=True)
 
-    def update_stage_data(self, content):
+    def update_stage_data(self, timestamp, content):
         """Callback for stage data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'stage']):

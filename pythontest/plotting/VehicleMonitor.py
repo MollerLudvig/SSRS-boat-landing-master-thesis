@@ -4,7 +4,7 @@ import math
 import time
 import argparse
 
-save_history = 100
+save_history = 50
 
 class VehicleMonitor:
     def __init__(self,name, udpPort, save_CSV=True, color='blue', 
@@ -74,7 +74,7 @@ class VehicleMonitor:
         while self.is_connected:
             try:
                 msg = self.conn.recv_match(
-                    type=['LOCAL_POSITION_NED', 'ATTITUDE', 'GLOBAL_POSITION_INT', 'SCALED_IMU', 'WIND', 'SIM_STATE'], 
+                    type=['LOCAL_POSITION_NED', 'ATTITUDE', 'GLOBAL_POSITION_INT', 'SCALED_IMU', 'WIND', 'SIMSTATE'], 
                     blocking=True, 
                     timeout=1.0
                 )
@@ -134,7 +134,7 @@ class VehicleMonitor:
                         wind_direction = msg.direction
                         self.windHistory.append((wind_time, wind_speed, wind_direction))
                         self.windHistory = self.windHistory[-save_history:]
-                    elif msg.get_type() == 'SIM_STATE':
+                    elif msg.get_type() == 'SIMSTATE':
                         self.SIM_running = True
                         sim_time = time.time()  # Time not provided in message
                         roll = math.degrees(msg.roll)
@@ -146,13 +146,17 @@ class VehicleMonitor:
                         xgyro = math.degrees(msg.xgyro)
                         ygyro = math.degrees(msg.ygyro)
                         zgyro = math.degrees(msg.zgyro)
-                        lat = msg.lat_int / 1e7
-                        lon = msg.lon_int / 1e7
-                        alt = msg.alt
-                        vn = msg.vn
-                        ve = msg.ve
-                        vd = msg.vd
-                        self.simStateHistory.append((sim_time, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, vn, ve, vd))
+                        lat = msg.lat / 1e7
+                        lon = msg.lng / 1e7
+                        # alt = msg.alt
+                        # vn = msg.vn
+                        # ve = msg.ve
+                        # vd = msg.vd
+                        # steal altitude from GPS
+                        if self.gpsHistory:
+                            alt = self.gpsHistory[-1][3]
+                        
+                        self.simStateHistory.append((sim_time, roll, pitch, yaw, xacc, yacc, zacc, xgyro, ygyro, zgyro, lat, lon, alt, 0, 0, 0))
                         self.simStateHistory = self.simStateHistory[-save_history:]
             except Exception as e:
                 print(f"Error in polling: {e}")
@@ -190,7 +194,7 @@ class VehicleMonitor:
             'GLOBAL_POSITION_INT': 50,
             'SCALED_IMU': 50,
             'WIND': 10,  # Wind data usually doesn't change as rapidly
-            'SIM_STATE': 50
+            'SIMSTATE': 50
         }
         
         # MAVLink message IDs for each message type
@@ -200,7 +204,7 @@ class VehicleMonitor:
             'GLOBAL_POSITION_INT': mavutil.mavlink.MAVLINK_MSG_ID_GLOBAL_POSITION_INT,
             'SCALED_IMU': mavutil.mavlink.MAVLINK_MSG_ID_SCALED_IMU,
             'WIND': mavutil.mavlink.MAVLINK_MSG_ID_WIND,
-            'SIM_STATE': mavutil.mavlink.MAVLINK_MSG_ID_SIM_STATE
+            'SIMSTATE': mavutil.mavlink.MAVLINK_MSG_ID_SIMSTATE
         }
         
         for msg_type, rate in message_types.items():

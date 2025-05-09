@@ -2,13 +2,11 @@ import redis
 import json
 import ast
 import time
-import threading
 
 
 class RedisClient:
     """
-    A Redis client with support for publish/subscribe and stream operations.
-    Modified to support non-blocking operation.
+    Initializes the RedisClient.
     """
 
     def __init__(
@@ -19,8 +17,6 @@ class RedisClient:
         self._r = redis.Redis(host=host, port=port, db=0)
         self._callbacks = {}
         self._last_stream_ids = {}
-        self._running = False
-        self._listener_thread = None
 
         # Make 3 attempts to connect to redis server, raise error if all fails
         for attempt in range(3):
@@ -97,42 +93,22 @@ class RedisClient:
     def listen(self):
         """
          Starts listening for incoming messages on subscribed channels and executes their respective callbacks.
-         This method runs in the current thread and will block until stop_listening is called.
+
+         Note: This method runs an infinite loop to process incoming messages.
          """
-        self._running = True
-        while self._running:
-            message = self._pubsub.get_message(timeout=0.1)
-            if message is not None and message["type"] == "message":
-                channel_name = message["channel"].decode("utf-8")
-                data = self._from_json(message["data"])
-                if not {'timestamp', 'content'} == data.keys():
-                    print(f"Error: message should contain 'timestamp' and 'content' but got: {data}", flush=True)
+
+        for event in self._pubsub.listen():
+            if event["type"] == "message":
+                channel_name = event["channel"].decode("utf-8")
+                message = self._from_json(event["data"])
+                if not {'timestamp', 'content'} == message.keys():
+                    print(f"Error: message should contain 'timestamp' and 'content' but got: {message}", flush=True)
                     continue
                 try:
-                    self._callbacks[channel_name](data['timestamp'], data['content'])
+                    self._callbacks[channel_name](message['timestamp'], message['content'])
                 except TypeError:
                     print(f"Error: callback for channel '{channel_name}' has invalid signature. Should be (timestamp:float, content: Any)", flush=True)
                     continue
-            time.sleep(0.01)  # Small sleep to prevent CPU hogging
-
-    def stop_listening(self):
-        """
-        Stops the listener loop.
-        """
-        self._running = False
-        if self._listener_thread and self._listener_thread.is_alive():
-            self._listener_thread.join(timeout=1.0)
-
-    def start_listening_thread(self):
-        """
-        Starts the listener in a separate thread.
-        """
-        if self._listener_thread is None or not self._listener_thread.is_alive():
-            self._listener_thread = threading.Thread(target=self.listen)
-            self._listener_thread.daemon = True
-            self._listener_thread.start()
-            return True
-        return False
 
     def add_stream_message(
             self,
