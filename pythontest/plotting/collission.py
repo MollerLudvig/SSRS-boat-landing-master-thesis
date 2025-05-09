@@ -18,7 +18,8 @@ class ColissionData:
     last_indexcheck_d: int = 0
 
 
-def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: VehicleData, threshold: float = 2.0, offset_transform: List[float] = [0, 0, 0]):
+def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: VehicleData, 
+            threshold: float = 2.0, offset_transform: List[float] = [0, 0, 0]):    
     """
     Check if drone has landed (bingbong)
     """
@@ -31,13 +32,13 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         print("Warning: Vehicle data not available yet for landing detection")
         return  # Exit function early
     
-    # Check if required attributes are available
-    required_attrs = ['lat', 'lon', 'alt', 'yaw']
-    for attr in required_attrs:
-        if (not hasattr(boatData.simulation, attr) or not hasattr(droneData.simulation, attr) or
-            getattr(boatData.simulation, attr) is None or getattr(droneData.simulation, attr) is None):
-            print(f"Warning: Missing required attribute {attr} for landing detection")
-            return  # Exit function early
+    # Ensure last_indexcheck values don't exceed array bounds
+    if collision_data.last_indexcheck_b >= len(boatData.simulation.time):
+        collision_data.last_indexcheck_b = len(boatData.simulation.time) - 1
+        
+    if collision_data.last_indexcheck_d >= len(droneData.simulation.time):
+        collision_data.last_indexcheck_d = len(droneData.simulation.time) - 1
+    
 
     # Get what index last checked time is now at
     # Has to be done since old values are thrown away
@@ -47,11 +48,20 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
             collision_data.last_indexcheck_d = 0
             collision_data.last_indexcheck_b = 0
         else:
-            collision_data.last_indexcheck_b =-1
-            collision_data.last_indexcheck_d =-1
+            # make sure no out of range inexing
+            if collision_data.last_indexcheck_b >= len(boatData.simulation.time):
+                collision_data.last_indexcheck_b = len(boatData.simulation.time) - 1
+            if collision_data.last_indexcheck_d >= len(droneData.simulation.time):
+                collision_data.last_indexcheck_d = len(droneData.simulation.time) - 1
+
+            # Check if the last time check is before the current time
             while last_timecheck <= (boatData.simulation.time[collision_data.last_indexcheck_b]):
+               if collision_data.last_indexcheck_b == 0:
+                    break
                collision_data.last_indexcheck_b -=1
             while last_timecheck <= (droneData.simulation.time[collision_data.last_indexcheck_d] - 0.1): #add some margin on drone time since it is not crucial
+                if collision_data.last_indexcheck_d == 0:
+                    break
                 collision_data.last_indexcheck_d -=1
 
 
@@ -105,8 +115,6 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
             print(f"Collision detected at time {collision_data.time[-1]:.2f} s: distance = {collision_data.distance[-1]:.2f} m")
     
     # BIGG UPP THAT INDEXX BOIE but chill if we have no new data
+    collision_data.last_indexcheck_b = len(boatData.simulation.time) - 1
     if closest_index:
-        collision_data.last_indexcheck_d = closest_index
-        collision_data.last_indexcheck_b = len(boatData.simulation.time)
-
-    return collision_data
+            collision_data.last_indexcheck_d = closest_index

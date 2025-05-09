@@ -93,10 +93,9 @@ def update_plot(_):
     # Update data containers (thread-safe)
     droneData.update()
     boatData.update()
-    global collision_data
-    # Check if landed
     print("Checking if landed...")
-    collision_data = is_landed(collision_data, boatData, droneData, landing_threshold, landing_offset_transform)
+    # Check if landed
+    is_landed(collision_data, boatData, droneData, landing_threshold, landing_offset_transform)
 
     # 1. Update Global Position Window
     if enableGlobalWindow:
