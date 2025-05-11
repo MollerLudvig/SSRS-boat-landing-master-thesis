@@ -38,8 +38,8 @@ boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
 collision_data = ColissionData()
 
 # Offset to landing poit from measurement point
-landing_offset_transform = [-5.0, 0.0, -4.0] #X, Y, Z  [m]
-landing_threshold = 3.0 # meters
+landing_offset_transform = [-2.5, 0.0, 0.0] #X, Y, Z  [m]
+landing_threshold = 5.0 # meters
 
 drone.connect()
 boat.connect()
