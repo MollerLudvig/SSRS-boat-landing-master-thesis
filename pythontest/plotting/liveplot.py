@@ -22,7 +22,7 @@ enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 enableWindWindow = False
-enableCollisionWindow = False
+enableCollisionWindow = True
 savePlots = False
 
 redis_client = RedisClient(host="localhost", port=6379)
@@ -38,11 +38,13 @@ boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
 collision_data = ColissionData()
 
 # Offset to landing poit from measurement point
-landing_offset_transform = [-2.5, 0.0, 0.0] #X, Y, Z  [m]
+landing_offset_transform = [-5.0, 0.0, -4.0] #X, Y, Z  [m]
 landing_threshold = 3.0 # meters
 
 drone.connect()
 boat.connect()
+
+time.sleep(5)
 
 # Initialize data containers with the VehicleData class
 droneData = VehicleData(drone)
@@ -78,7 +80,7 @@ if enableWindWindow:
     figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
 if enableCollisionWindow:
-    figCollision, axsCollision = plt.subplots(2, 2, figsize=(8, 6), num="Collision Detection")
+    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection")
     figCollision.suptitle(f"Collision Detection", fontsize=14)
 
 
@@ -93,9 +95,13 @@ def update_plot(_):
     # Update data containers (thread-safe)
     droneData.update()
     boatData.update()
-    print("Checking if landed...")
+    # print("Checking if landed...")
     # Check if landed
     is_landed(collision_data, boatData, droneData, landing_threshold, landing_offset_transform)
+    # print first and last timestamp in sim data
+    # print(f"\n Drone 1st timestamp: {droneData.simulation.time[0] if droneData.simulation.time else 'N/A'}")
+    # print(f"Drone timestamps: {droneData.simulation.time if droneData.simulation.time else 'N/A'}\n")
+    # print(f"Boat timestamps: {boatData.simulation.time if boatData.simulation.time else 'N/A'}\n")
 
     # 1. Update Global Position Window
     if enableGlobalWindow:
@@ -441,7 +447,7 @@ def update_plot(_):
 
 
     # 8. Update Collision Window
-    if enableCollisionWindow and len(axsCollision) == 4:
+    if enableCollisionWindow:
         # Collision detection
         axsCollision[0, 0].clear()
         axsCollision[0, 0].plot(collision_data.time, collision_data.distance, label='Absolute distance', color='red')
@@ -453,7 +459,7 @@ def update_plot(_):
         # Collision distance
         axsCollision[0, 1].clear()
         axsCollision[0, 1].plot(collision_data.time, collision_data.delta_x, label='Delta X', color='blue')
-        axsCollision[0, 1].set_title("Delta Z to Collision")
+        axsCollision[0, 1].set_title("Delta X to Collision")
         axsCollision[0, 1].set_ylabel("Distance (m)")
         axsCollision[0, 1].legend()
         axsCollision[0, 1].grid(True)
@@ -473,6 +479,13 @@ def update_plot(_):
         axsCollision[1, 1].set_ylabel("Distance (m)")
         axsCollision[1, 1].legend()
         axsCollision[1, 1].grid(True)
+
+        # Delta time
+        axsCollision[2, 0].clear()
+        axsCollision[2, 0].plot(collision_data.delta_time, label='Delta Time', color='purple')
+        axsCollision[2, 0].set_title("Delta Time measurments")
+        axsCollision[2, 0].set_ylabel("Time (s)")
+        axsCollision[2, 0].set_xlabel("Timesteps")
 
 
 
