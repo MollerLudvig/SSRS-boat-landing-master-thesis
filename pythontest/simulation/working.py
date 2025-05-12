@@ -39,6 +39,7 @@ def tester():
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
+    needed_Gr = 1/20 # Glide ratio
     descent_lookahead = 4
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.2
