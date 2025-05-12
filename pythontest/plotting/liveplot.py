@@ -80,7 +80,7 @@ if enableBoatVelocityWindow:
     figBoatVel.suptitle(f"Boat Velocity Components", fontsize=14)
 
 if enableRelativeVelocityWindow:
-    figRelVel, axsRelVel = plt.subplots(4, 1, figsize=(10, 10), num="Relative Velocity")
+    figRelVel, axsRelVel = plt.subplots(4, 1, figsize=(10, 10), num="Relative Velocity", constrained_layout=True)
     figRelVel.suptitle(f"Drone-Boat Relative Velocity", fontsize=14)
 
 if enableWindWindow:
@@ -408,6 +408,7 @@ def update_plot(_):
             axsRelVel[0].clear()
             axsRelVel[0].plot(time_history, rel_vn_history, label='X Relative', color='red')
             axsRelVel[0].set_ylabel("m/s")
+            axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[0].set_title("X Relative Velocity (Drone-Boat)")
             axsRelVel[0].legend()
             axsRelVel[0].grid(True)
@@ -416,6 +417,7 @@ def update_plot(_):
             axsRelVel[1].clear()
             axsRelVel[1].plot(time_history, rel_ve_history, label='Y Relative', color='green')
             axsRelVel[1].set_ylabel("m/s")
+            axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[1].set_title("Y Relative Velocity (Drone-Boat)")
             axsRelVel[1].legend()
             axsRelVel[1].grid(True)
@@ -424,6 +426,7 @@ def update_plot(_):
             axsRelVel[2].clear()
             axsRelVel[2].plot(time_history, rel_vd_history, label='Z Relative', color='blue')
             axsRelVel[2].set_ylabel("m/s")
+            axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[2].set_title("Z Relative Velocity (Drone-Boat)")
             axsRelVel[2].legend()
             axsRelVel[2].grid(True)
