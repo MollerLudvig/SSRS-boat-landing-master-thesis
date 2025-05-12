@@ -1,9 +1,18 @@
 import matplotlib.pyplot as plt
-from pymavlink import mavutil
+# from pymavlink import mavutil
 import time
 import numpy as np
 from VehicleMonitor import VehicleMonitor
 from variabels import VehicleData  # Import the VehicleData class
+from redisCallbacks import RedisCallbacks
+from redis_communication import RedisClient
+from threading import Thread, Lock
+from coordinate_conv import latlon_to_ned
+from dataclasses import dataclass, field
+from collission import ColissionData, is_landed
+
+
+Simulation = True
 
 # Configure window display options
 enableGlobalWindow = True
@@ -12,12 +21,26 @@ enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
-enableWindWindow = True
+enableWindWindow = False
+enableCollisionWindow = True
 savePlots = False
 
-# Initialize vehicles
+redis_client = RedisClient(host="localhost", port=6379)
+callbacks = RedisCallbacks(redis_client)
+print("Redis client initialized.")
+callbacks.start_listening()
+print("Redis callbacks started.")
+
+
+# Initialize vehicles  
 drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
 boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
+collision_data = ColissionData()
+
+drone.connect()
+boat.connect()
+
+time.sleep(5)
 
 # Initialize data containers with the VehicleData class
 droneData = VehicleData(drone)
@@ -52,64 +75,27 @@ if enableWindWindow:
     figWind, axsWind = plt.subplots(2, 1, figsize=(8, 8), num="Wind Data")
     figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
+if enableCollisionWindow:
+    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection")
+    figCollision.suptitle(f"Collision Detection", fontsize=14)
+
+
+
+
 def get_vector_magnitude(x, y, z=0):
-    """Calculate the magnitude of a vector"""
     return np.sqrt(x**2 + y**2 + z**2)
-
-def get_sim_or_raw_data(sim_data, raw_data):
-    """
-    Returns simulation data when available, otherwise returns raw data
-    For lists, returns the last element (most recent)
-    """
-    if sim_data and len(sim_data) > 0:
-        return sim_data[-1]
-    elif raw_data and len(raw_data) > 0:
-        return raw_data[-1]
-    else:
-        return None
-
-def get_relative_ned_velocity(drone_data, boat_data):
-    """
-    Calculate relative North-East-Down velocity of drone with respect to boat
-    Returns (vn_rel, ve_rel, vd_rel, v_magnitude)
-    """
-    # First try to get velocities from simulation data
-    drone_sim_vn = drone_data.simulation.vn[-1] if drone_data.simulation.vn else None
-    drone_sim_ve = drone_data.simulation.ve[-1] if drone_data.simulation.ve else None
-    drone_sim_vd = drone_data.simulation.vd[-1] if drone_data.simulation.vd else None
-    
-    boat_sim_vn = boat_data.simulation.vn[-1] if boat_data.simulation.vn else None
-    boat_sim_ve = boat_data.simulation.ve[-1] if boat_data.simulation.ve else None
-    boat_sim_vd = boat_data.simulation.vd[-1] if boat_data.simulation.vd else None
-    
-    # If simulation data available for both, use it
-    if all(v is not None for v in [drone_sim_vn, drone_sim_ve, drone_sim_vd, 
-                                  boat_sim_vn, boat_sim_ve, boat_sim_vd]):
-        vn_rel = drone_sim_vn - boat_sim_vn
-        ve_rel = drone_sim_ve - boat_sim_ve
-        vd_rel = drone_sim_vd - boat_sim_vd
-    
-    # Otherwise try to use GPS velocity data
-    elif drone_data.gps.vx and boat_data.gps.vx:
-        vn_rel = drone_data.gps.vx[-1] - boat_data.gps.vx[-1]
-        ve_rel = drone_data.gps.vy[-1] - boat_data.gps.vy[-1]
-        vd_rel = drone_data.gps.vz[-1] - boat_data.gps.vz[-1]
-    
-    # If no velocity data available, return None
-    else:
-        return None, None, None, None
-    
-    v_magnitude = get_vector_magnitude(vn_rel, ve_rel, vd_rel)
-    return vn_rel, ve_rel, vd_rel, v_magnitude
 
 def update_plot(_):
     """Update all plot windows with latest data"""
+
     # Update data containers (thread-safe)
     droneData.update()
     boatData.update()
-    
-    current_time = time.time()
-    
+
+    # Check if landed ( or maby rather distance to get collision data)
+    is_landed(collision_data, boatData, droneData, landing_threshold = 3.0, 
+              landing_offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
+
     # 1. Update Global Position Window
     if enableGlobalWindow:
         axGlobal.clear()
@@ -119,6 +105,7 @@ def update_plot(_):
             axGlobal.plot(droneData.simulation.lon, droneData.simulation.lat, 
                          'o-', label="Drone (SIM)", color=drone.color)
         elif droneData.gps.lat:
+            print('Simdata not available, using GPS data (DRONE)')
             axGlobal.plot(droneData.gps.lon, droneData.gps.lat, 
                          'o-', label="Drone (GPS)", color=drone.color, alpha=0.7)
             
@@ -126,8 +113,13 @@ def update_plot(_):
             axGlobal.plot(boatData.simulation.lon, boatData.simulation.lat, 
                          'o-', label="Boat (SIM)", color=boat.color)
         elif boatData.gps.lat:
+            print('Simdata not available, using GPS data (BOAT)')
             axGlobal.plot(boatData.gps.lon, boatData.gps.lat, 
                          'o-', label="Boat (GPS)", color=boat.color, alpha=0.7)
+            
+        if callbacks.P1:
+            axGlobal.plot(callbacks.P1.lon, callbacks.P1.lat, 
+                         'o-', label="P1 (SIM)", color='purple')
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 
@@ -446,6 +438,50 @@ def update_plot(_):
             axsWind[1].legend()
             axsWind[1].grid(True)
 
+
+    # 8. Update Collision Window
+    if enableCollisionWindow:
+        # Collision detection
+        axsCollision[0, 0].clear()
+        axsCollision[0, 0].plot(collision_data.time, collision_data.distance, label='Absolute distance', color='red')
+        axsCollision[0, 0].set_title("Absolute Distance, boat to drone")
+        axsCollision[0, 0].set_ylabel("Collision")
+        axsCollision[0, 0].legend()
+        axsCollision[0, 0].grid(True)
+        
+        # Collision distance
+        axsCollision[0, 1].clear()
+        axsCollision[0, 1].plot(collision_data.time, collision_data.delta_x, label='Delta X', color='blue')
+        axsCollision[0, 1].set_title("Delta X to Collision")
+        axsCollision[0, 1].set_ylabel("Distance (m)")
+        axsCollision[0, 1].legend()
+        axsCollision[0, 1].grid(True)
+        
+        # Collision delta time
+        axsCollision[1, 0].clear()
+        axsCollision[1, 0].plot(collision_data.time, collision_data.delta_y, label='Delta Y', color='green')
+        axsCollision[1, 0].set_title("Delta Y to Collision")
+        axsCollision[1, 0].set_ylabel("Distance (m)")
+        axsCollision[1, 0].legend()
+        axsCollision[1, 0].grid(True)
+        
+        # Collision delta x
+        axsCollision[1, 1].clear()
+        axsCollision[1, 1].plot(collision_data.time, collision_data.delta_z, label='Delta Z', color='orange')
+        axsCollision[1, 1].set_title("Delta Z to Collision")
+        axsCollision[1, 1].set_ylabel("Distance (m)")
+        axsCollision[1, 1].legend()
+        axsCollision[1, 1].grid(True)
+
+        # Delta time
+        axsCollision[2, 0].clear()
+        axsCollision[2, 0].plot(collision_data.delta_time, label='Delta Time', color='purple')
+        axsCollision[2, 0].set_title("Delta Time measurments")
+        axsCollision[2, 0].set_ylabel("Time (s)")
+        axsCollision[2, 0].set_xlabel("Timesteps")
+
+
+
 # Show all plots non-blocking
 plt.tight_layout()
 plt.ion()  # Enable interactive mode
@@ -459,24 +495,26 @@ try:
 except KeyboardInterrupt:
     # Save plots if requested
     print("Exiting...")
+
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
         if enableGlobalWindow:
-            figGlobal.savefig(f"global_position_{timestamp}.png")
+            figGlobal.savefig(f"plots/global_position_{timestamp}.png")
         if enableDroneAttitudeWindow:
-            figDroneAtt.savefig(f"drone_attitude_{timestamp}.png")
+            figDroneAtt.savefig(f"plots/drone_attitude_{timestamp}.png")
         if enableBoatAttitudeWindow:
-            figBoatAtt.savefig(f"boat_attitude_{timestamp}.png")
+            figBoatAtt.savefig(f"plots/boat_attitude_{timestamp}.png")
         if enableDroneVelocityWindow:
-            figDroneVel.savefig(f"drone_velocity_{timestamp}.png")
+            figDroneVel.savefig(f"plots/drone_velocity_{timestamp}.png")
         if enableBoatVelocityWindow:
-            figBoatVel.savefig(f"boat_velocity_{timestamp}.png")
+            figBoatVel.savefig(f"plots/boat_velocity_{timestamp}.png")
         if enableRelativeVelocityWindow:
-            figRelVel.savefig(f"relative_velocity_{timestamp}.png")
+            figRelVel.savefig(f"plots/relative_velocity_{timestamp}.png")
         if enableWindWindow:
-            figWind.savefig(f"wind_data_{timestamp}.png")
+            figWind.savefig(f"plots/wind_data_{timestamp}.png")
         print("Plots saved.")
-    
+    else:
+        print("No plots saved")    
     # Close all plot windows
     plt.close('all')
     exit(0)

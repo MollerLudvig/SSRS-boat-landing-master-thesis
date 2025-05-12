@@ -22,6 +22,8 @@ from Guidance.kalman_OOSM import KalmanFilterXY
 # Add a way to know if the drone landed or not
 # Test without aborting to see what will happen
 
+timestamp = time.time()
+
 def tester():
     # CONSTANTS
     R = 6371000 # Earth radius
@@ -85,18 +87,18 @@ def tester():
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     rc.add_stream_message("stage", "started")
+    gr_message.update({"time": timestamp,
+                    "Gr": Gr,
+                    "needed_Gr": Gr})
+    rc.send_message("glide ratio", gr_message)
+    rc.send_message("stage", "started")
 
-    drone_altitudes = []
     drone_coordinates = []
-    z_wanteds = []
-    needed_sink_rates = []
-    wanted_sink_rates = []
-    actual_sink_rates = []
     follow_diversion_data = {}
     P1_message = {}
     P2_message = {}
     P3_message = {}
-    xs = [0] 
+    gr_message = {}
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
@@ -105,6 +107,8 @@ def tester():
 
     # Main loop
     while True:
+
+        timestamp = time.time()
 
         drone.update_possition_mavlink()
 
@@ -136,15 +140,16 @@ def tester():
 
         # Save kf state in CSV
         if use_filter:
-            boat.data.update({"kf_x": kf.x[0][0],
-                          "kf_y": kf.x[1][0],
-                          "kf_lat": kf.lat,
-                          "kf_lon": kf.lon,
-                          "kf_speed": kf.x[2][0],
-                          "kf_heading": kf.x[3][0],
-                          "real_heading": boat.heading,
-                          "real_lat": boat.lat_sim,
-                          "real_lon": boat.lon_sim})
+            boat.data.update({"time": timestamp,
+                            "kf_x": kf.x[0][0],
+                            "kf_y": kf.x[1][0],
+                            "kf_lat": kf.lat,
+                            "kf_lon": kf.lon,
+                            "kf_speed": kf.x[2][0],
+                            "kf_heading": kf.x[3][0],
+                            "real_heading": boat.heading,
+                            "real_lat": boat.lat_sim,
+                            "real_lon": boat.lon_sim})
         
         if verbose and use_filter:
              print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
@@ -206,7 +211,7 @@ def tester():
 
         P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
         P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
-        P2_message.update({"time": time.time(),
+        P2_message.update({"time": timestamp,
                           "lat": P2_lat,
                           "lon": P2_lon,
                           "alt": cruise_altitude})
@@ -214,25 +219,27 @@ def tester():
 
         P1_lat, P1_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading-180, 20)
         P1_distance = wp.dist_between_coords(P1_lat, P1_lon, boat.deck_lat, boat.deck_lon)
-        P1_message.update({"time": time.time(),
+        P1_message.update({"time": timestamp,
                            "lat": P1_lat,
                            "lon": P1_lon,
                            "alt": cruise_altitude})
         rc.send_message('P1', P1_message)
 
+        follow_diversion_data.update({"time": timestamp,
+                                        "P2_distance": P2_distance,
+                                        "stall_speed": drone_total_stall_speed,
+                                        "boat_speed": boat.speed,
+                                        "drone_distance": drone_distance_to_boat})
+                
 
-        follow_diversion_data.update({"P2_distance": P2_distance,
-                                "stall_speed": drone_total_stall_speed,
-                                "boat_speed": boat.speed,
-                                "drone_distance": drone_distance_to_boat})
-                    
         rc.add_stream_message("follow diversion", follow_diversion_data)
+        rc.send_message("follow diversion", follow_diversion_data)
 
         boat_distance_to_target = wp.calc_landing_point_dist_boat(drone_distance_to_boat, drone.speed, desired_boat_speed)
 
         # Calculate where P3 (landing point) is
         P3_lat, P3_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, boat_distance_to_target)
-        P3_message.update({"time": time.time(),
+        P3_message.update({"time": timestamp,
                            "lat": P3_lat,
                            "lon": P3_lon,
                            "alt": boat.altitude})
@@ -359,37 +366,37 @@ def tester():
 
                 drone_coordinates.append((drone.lat, drone.lon))
                 # Save z_wanted not z_wanted_lh because we compare to where the drone currently should be
-                z_wanteds.append(z_wanted)
-                drone_altitudes.append(drone.altitude)
-                needed_sink_rates.append(needed_sink_rate)
-                wanted_sink_rates.append(wanted_sink_rate)
-                actual_sink_rates.append(drone.vz)
-
                 if landing_iterator >= 1:
                     dist_to_start_coord = wp.dist_between_coords(drone_coordinates[0][0], drone_coordinates[0][1],
                                                                 drone_coordinates[landing_iterator][0], drone_coordinates[landing_iterator][1])
-                    xs.append(dist_to_start_coord)
 
                 # Update data dicts
-                drone.data.update({"xs": xs,
-                    "altitude": drone_altitudes,
-                    "z_wanted": z_wanteds,
-                    "needed_sr": needed_sink_rates,
-                    "wanted_sr": wanted_sink_rates,
-                    "actual_sr": actual_sink_rates,
+                drone.data.update({"time": timestamp,
+                    "xs": dist_to_start_coord,
+                    "altitude": drone.altitude,
+                    "z_wanted": z_wanted,
+                    "needed_sr": needed_sink_rate,
+                    "wanted_sr": wanted_sink_rate,
+                    "actual_sr": drone.vz,
                     "Gr": Gr})
                 
-                boat.data.update({"altitude": boat.altitude,
+                boat.data.update({"time": timestamp,
+                                  "altitude": boat.altitude,
                                   "lat": boat.lat,
                                   "lon": boat.lon})
                 
                 # Send data to redis stream
-                rc.add_stream_message("drone data", drone.data)
-                rc.add_stream_message("boat data", boat.data)
+                rc.send_message("drone data", drone.data)
+                rc.send_message("boat data", boat.data)
+                gr_message.update({"time": timestamp,
+                                   "Gr": Gr,
+                                   "needed_Gr": needed_Gr})
+                rc.send_message("glide ratio", gr_message)
                 rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
                 # Drone has landed on boat
                 if drone.altitude < boat.altitude + 1.5:
+                    rc.send_message("stage", "diversion")
                     rc.add_stream_message("stage", "diversion")
 
                 landing_iterator += 1
@@ -422,10 +429,17 @@ def tester():
         
             if dist_to_return_point < 25 and current_wp == 2:
                 # Go follow mode after diversion
+                rc.send_message("stage", "follow")
                 rc.add_stream_message("stage", "follow")
+                diversion_started = False
                 # Set the Gr to the wanted Gr so the last needed_Gr is not saved
                 rc.add_stream_message("needed_glide_ratio", Gr)
-                diversion_started = False
+
+            # Send data to redis stream for plotting
+            gr_message.update({"time": timestamp,
+                                "Gr": Gr,
+                                "needed_Gr": needed_Gr})
+            rc.send_message("glide ratio", gr_message)
         
         elif drone.stage == "exit":
             # Shut down connection and gazebo
@@ -477,7 +491,7 @@ def update_boat_position(kf, boat, boat_length):
     z = np.array([[boat.lat], [boat.lon], [boat.heading], [boat.vx], [boat.vy]])
 
     #update filter with new position
-    kf.update_w_latlon(z, time.time())
+    kf.update_w_latlon(z, timestamp)
 
     boat.sim_lat = boat.lat
     boat.sim_lon = boat.lon
@@ -486,7 +500,7 @@ def update_boat_position(kf, boat, boat_length):
 
 
 def predict_kf(kf, boat, boat_length):
-    kf.predict(time.time())
+    kf.predict(timestamp)
 
     update_object(boat, kf, boat_length)
 
