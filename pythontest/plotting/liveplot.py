@@ -22,7 +22,8 @@ enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 enableWindWindow = False
-enableCollisionWindow = True
+enableCollisionWindow = False
+enableDistToP = False
 savePlots = False
 
 redis_client = RedisClient(host="localhost", port=6379)
@@ -102,25 +103,29 @@ def update_plot(_):
         axGlobal.clear()
         
         # Prioritize simulation data when available
-        if droneData.simulation.lat:
-            axGlobal.plot(droneData.simulation.lon, droneData.simulation.lat, 
-                         'o-', label="Drone (SIM)", color=drone.color)
-        elif droneData.gps.lat:
-            print('Simdata not available, using GPS data (DRONE)')
-            axGlobal.plot(droneData.gps.lon, droneData.gps.lat, 
-                         'o-', label="Drone (GPS)", color=drone.color, alpha=0.7)
-            
+        if callbacks.P1:
+            axGlobal.plot(callbacks.P1.lon[-5:], callbacks.P1.lat[-5:], 
+                         'o-', markersize=10, label="P1 (SIM)", color='purple', )
+
         if boatData.simulation.lat:
-            axGlobal.plot(boatData.simulation.lon, boatData.simulation.lat, 
-                         'o-', label="Boat (SIM)", color=boat.color)
+            axGlobal.plot(boatData.simulation.lon[-8:], boatData.simulation.lat[-8:], 
+                         'o-', markersize=10, label="Boat (SIM)", color=boat.color, fillstyle='none')
         elif boatData.gps.lat:
             print('Simdata not available, using GPS data (BOAT)')
-            axGlobal.plot(boatData.gps.lon, boatData.gps.lat, 
-                         'o-', label="Boat (GPS)", color=boat.color, alpha=0.7)
+            axGlobal.plot(boatData.gps.lon[-8:], boatData.gps.lat[-8:], 
+                         'o-', markersize=10, label="Boat (GPS)", color=boat.color, alpha=0.7, fillstyle='none')
+
+        if droneData.simulation.lat:
+            axGlobal.plot(droneData.simulation.lon[-8:], droneData.simulation.lat[-8:], 
+                         'x-', markersize=10, label="Drone (SIM)", color=drone.color)
+        elif droneData.gps.lat:
+            print('Simdata not available, using GPS data (DRONE)')
+            axGlobal.plot(droneData.gps.lon[-8:], droneData.gps.lat[-8:], 
+                         'x-', markersize=10, label="Drone (GPS)", color=drone.color, alpha=0.7)
             
-        if callbacks.P1:
-            axGlobal.plot(callbacks.P1.lon, callbacks.P1.lat, 
-                         'o-', label="P1 (SIM)", color='purple')
+        
+            
+        
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 
