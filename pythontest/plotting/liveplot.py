@@ -23,7 +23,7 @@ enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = True
 enableWindWindow = False
 enableCollisionWindow = False
-enableDistToP = False
+enableDistToP = True
 savePlots = False
 
 @dataclass
