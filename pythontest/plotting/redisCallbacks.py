@@ -63,6 +63,7 @@ class RedisCallbacks:
         self.boat_data = BoatData()
         self.glide_ratio_data = GrData()
         self.StateData = StageData()
+        self.follow_diversion_data = FollowDiversionData()
         
         # Setup callbacks for each position channel
         self.setup_callbacks()
