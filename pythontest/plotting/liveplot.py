@@ -37,10 +37,6 @@ drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
 boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
 collision_data = ColissionData()
 
-# Offset to landing poit from measurement point
-landing_offset_transform = [-2.5, 0.0, 0.0] #X, Y, Z  [m]
-landing_threshold = 5.0 # meters
-
 drone.connect()
 boat.connect()
 
@@ -95,13 +91,10 @@ def update_plot(_):
     # Update data containers (thread-safe)
     droneData.update()
     boatData.update()
-    # print("Checking if landed...")
-    # Check if landed
-    is_landed(collision_data, boatData, droneData, landing_threshold, landing_offset_transform)
-    # print first and last timestamp in sim data
-    # print(f"\n Drone 1st timestamp: {droneData.simulation.time[0] if droneData.simulation.time else 'N/A'}")
-    # print(f"Drone timestamps: {droneData.simulation.time if droneData.simulation.time else 'N/A'}\n")
-    # print(f"Boat timestamps: {boatData.simulation.time if boatData.simulation.time else 'N/A'}\n")
+
+    # Check if landed ( or maby rather distance to get collision data)
+    is_landed(collision_data, boatData, droneData, landing_threshold = 3.0, 
+              landing_offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
 
     # 1. Update Global Position Window
     if enableGlobalWindow:

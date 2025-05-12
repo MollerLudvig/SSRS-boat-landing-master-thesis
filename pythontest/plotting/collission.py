@@ -2,7 +2,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import List
 from variabels import VehicleData
-from coordinate_conv import latlon_to_ned, latlon_to_xy
+from coordinate_conv import latlon_to_xy
 
 @dataclass
 class ColissionData:
@@ -41,7 +41,7 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
     points_processed = 0
     skipped_points = 0
     
-    # Process boat data within the common time window
+    # Process drone data within the common time window
     # Leave margin at the end to avoid edge effects
     end_index = len(droneData.simulation.time) - 20 if len(droneData.simulation.time) > 20 else 0
     
@@ -54,7 +54,7 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         if len(collision_data.time) > 0 and time_val <= collision_data.time[-1]:
             continue
         
-        # Find closest drone data point
+        # Find closest boat data point
         diff_array = np.abs(np.array(boatData.simulation.time) - time_val)
         closest_index = np.argmin(diff_array)
         time_diff = abs(time_val - boatData.simulation.time[closest_index])
@@ -86,9 +86,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         dz = dd
         
         # Apply offset transform
-        dx -= offset_transform[0]
-        dy -= offset_transform[1]
-        dz -= offset_transform[2]
+        dx = offset_transform[0]
+        dy = offset_transform[1]
+        dz = offset_transform[2]
         
         # Calculate distance
         distance = np.sqrt(dx**2 + dy**2 + dz**2)
