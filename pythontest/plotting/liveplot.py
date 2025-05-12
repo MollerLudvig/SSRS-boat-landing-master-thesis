@@ -406,25 +406,25 @@ def update_plot(_):
         if time_history:
             # North relative velocity
             axsRelVel[0].clear()
-            axsRelVel[0].plot(time_history, rel_vn_history, label='X Relative', color='red')
+            axsRelVel[0].plot(time_history, rel_vn_history, label='North V', color='red')
             axsRelVel[0].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
-            axsRelVel[0].set_title("X Relative Velocity (Drone-Boat)")
+            axsRelVel[0].set_title("North Relative Velocity (Drone-Boat)")
             axsRelVel[0].legend()
             axsRelVel[0].grid(True)
             
             # East relative velocity
             axsRelVel[1].clear()
-            axsRelVel[1].plot(time_history, rel_ve_history, label='Y Relative', color='green')
+            axsRelVel[1].plot(time_history, rel_ve_history, label='East V', color='green')
             axsRelVel[1].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
-            axsRelVel[1].set_title("Y Relative Velocity (Drone-Boat)")
+            axsRelVel[1].set_title("North Relative Velocity (Drone-Boat)")
             axsRelVel[1].legend()
             axsRelVel[1].grid(True)
             
             # Down relative velocity
             axsRelVel[2].clear()
-            axsRelVel[2].plot(time_history, rel_vd_history, label='Z Relative', color='blue')
+            axsRelVel[2].plot(time_history, rel_vd_history, label='Z V', color='blue')
             axsRelVel[2].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[2].set_title("Z Relative Velocity (Drone-Boat)")
