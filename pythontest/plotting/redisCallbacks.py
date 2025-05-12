@@ -9,6 +9,7 @@ class PositionData:
     lat: List[float] = field(default_factory=list)
     lon: List[float] = field(default_factory=list)
     alt: List[float] = field(default_factory=list)
+    dist: List[float] = field(default_factory=list)
 
 @dataclass
 class DroneData:
@@ -45,6 +46,7 @@ class FollowDiversionData:
 @dataclass
 class GrData:
     time: List[float] = field(default_factory=list)
+    gr: List[float] = field(default_factory=list)
     needed_gr: List[float] = field(default_factory=list)
 
 @dataclass
@@ -83,34 +85,37 @@ class RedisCallbacks:
     def update_p1_position(self, timestamp, content):
         """Callback for P1 position updates"""
         with Lock():
-            if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
+            if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
                 self.P1.time.append(content['time'])
                 self.P1.lat.append(content['lat'])
                 self.P1.lon.append(content['lon'])
                 self.P1.alt.append(content['alt'])
+                self.P1.dist.append(content['distance'])
             else:
                 print(f"Invalid data format for P1 position: {content}", flush=True)
 
     def update_p2_position(self, timestamp, content):
         """Callback for P2 position updates"""
         with Lock():
-            if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
+            if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
                 
                 self.P2.time.append(content['time'])
                 self.P2.lat.append(content['lat'])
                 self.P2.lon.append(content['lon'])
                 self.P2.alt.append(content['alt'])
+                self.P2.dist.append(content['distance'])
             else:
                 print(f"Invalid data format for P2 position: {content}", flush=True)
 
     def update_p3_position(self, timestamp, content):
         """Callback for P3 position updates"""
-        if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt']):
+        if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
             with Lock():
                 self.P3.time.append(content['time'])
                 self.P3.lat.append(content['lat'])
                 self.P3.lon.append(content['lon'])
                 self.P3.alt.append(content['alt'])
+                self.P3.dist.append(content['distance'])
         else:
             print(f"Invalid data format for P3 position: {content}", flush=True)
 
@@ -161,8 +166,9 @@ class RedisCallbacks:
     def update_gr_data(self, timestamp, content):
         """Callback for glide ratio data updates"""
         with Lock():
-            if isinstance(content, dict) and all(k in content for k in ['time', 'needed_gr']):
+            if isinstance(content, dict) and all(k in content for k in ['time','Gr', 'needed_gr']):
                 self.glide_ratio_data.time.append(content['time'])
+                self.glide_ratio_data.gr.append(content['Gr'])
                 self.glide_ratio_data.needed_gr.append(content['needed_gr'])
             else:
                 print(f"Invalid data format for glide ratio data: {content}", flush=True)

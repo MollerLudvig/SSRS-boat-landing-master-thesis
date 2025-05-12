@@ -23,8 +23,19 @@ enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 enableWindWindow = False
 enableCollisionWindow = False
-enableDistToP = False
+enableDistToP = True
 savePlots = False
+
+@dataclass
+class Colors:
+    boat : str = 'green'
+    drone : str = 'blue'
+    p1 : str = 'purple'
+    p2 : str = 'orange'
+    p3 : str = 'red'
+    collision : str = 'red'
+colors = Colors()
+
 
 redis_client = RedisClient(host="localhost", port=6379)
 callbacks = RedisCallbacks(redis_client)
@@ -80,6 +91,9 @@ if enableCollisionWindow:
     figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection")
     figCollision.suptitle(f"Collision Detection", fontsize=14)
 
+if enableDistToP:
+    figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3")
+    figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
 
 
@@ -105,23 +119,23 @@ def update_plot(_):
         # Prioritize simulation data when available
         if callbacks.P1:
             axGlobal.plot(callbacks.P1.lon[-5:], callbacks.P1.lat[-5:], 
-                         'o-', markersize=10, label="P1 (SIM)", color='purple', )
+                         'o-', markersize=10, label="P1 (SIM)", color=colors.p1, )
 
         if boatData.simulation.lat:
             axGlobal.plot(boatData.simulation.lon[-8:], boatData.simulation.lat[-8:], 
-                         'o-', markersize=10, label="Boat (SIM)", color=boat.color, fillstyle='none')
+                         'o-', markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
         elif boatData.gps.lat:
             print('Simdata not available, using GPS data (BOAT)')
             axGlobal.plot(boatData.gps.lon[-8:], boatData.gps.lat[-8:], 
-                         'o-', markersize=10, label="Boat (GPS)", color=boat.color, alpha=0.7, fillstyle='none')
+                         'o-', markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
 
         if droneData.simulation.lat:
             axGlobal.plot(droneData.simulation.lon[-8:], droneData.simulation.lat[-8:], 
-                         'x-', markersize=10, label="Drone (SIM)", color=drone.color)
+                         'x-', markersize=10, label="Drone (SIM)", color=colors.drone)
         elif droneData.gps.lat:
             print('Simdata not available, using GPS data (DRONE)')
             axGlobal.plot(droneData.gps.lon[-8:], droneData.gps.lat[-8:], 
-                         'x-', markersize=10, label="Drone (GPS)", color=drone.color, alpha=0.7)
+                         'x-', markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
             
         
             
@@ -486,6 +500,35 @@ def update_plot(_):
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")
 
+
+    if enableDistToP:
+
+        # Distance to P1
+        axsDistToP[0].clear()
+        if callbacks.P1:
+            axsDistToP[0].plot(callbacks.P1.time[-300:], callbacks.P1.dist[-300:], label='Distance to P1', color=colors.p1)
+            axsDistToP[0].set_title("Distance to P1")
+            axsDistToP[0].set_ylabel("Distance (m)")
+            axsDistToP[0].legend()
+            axsDistToP[0].grid(True)
+        
+        # Distance to P2
+        axsDistToP[1].clear()
+        if callbacks.P2:
+            axsDistToP[1].plot(callbacks.P2.time[-300:], callbacks.P2.dist[-300:], label='Distance to P2', color=colors.p2)
+            axsDistToP[1].set_title("Distance to P2")
+            axsDistToP[1].set_ylabel("Distance (m)")
+            axsDistToP[1].legend()
+            axsDistToP[1].grid(True)
+        
+        # Distance to P3
+        axsDistToP[2].clear()
+        if callbacks.P3:
+            axsDistToP[2].plot(callbacks.P3.time[-300:], callbacks.P3.dist[-300:], label='Distance to P3', color=colors.p3)
+            axsDistToP[2].set_title("Distance to P3")
+            axsDistToP[2].set_ylabel("Distance (m)")
+            axsDistToP[2].legend()
+            axsDistToP[2].grid(True)
 
 
 # Show all plots non-blocking

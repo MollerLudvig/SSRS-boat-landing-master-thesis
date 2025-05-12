@@ -207,18 +207,23 @@ def tester():
 
         P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
         P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
+        P2_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P2_lat, P2_lon))
+
         P2_message.update({"time": timestamp,
                           "lat": P2_lat,
                           "lon": P2_lon,
-                          "alt": cruise_altitude})
+                          "alt": cruise_altitude,
+                          "distance": P2_distance_to_drone})
         rc.send_message('P2', P2_message)
 
         P1_lat, P1_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading-180, 20)
         P1_distance = wp.dist_between_coords(P1_lat, P1_lon, boat.deck_lat, boat.deck_lon)
+        P1_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P1_lat, P1_lon))
         P1_message.update({"time": timestamp,
                            "lat": P1_lat,
                            "lon": P1_lon,
-                           "alt": cruise_altitude})
+                           "alt": cruise_altitude,
+                           "distance": P1_distance_to_drone})
         rc.send_message('P1', P1_message)
 
         follow_diversion_data.update({"time": timestamp,
@@ -235,13 +240,16 @@ def tester():
 
         # Calculate where P3 (landing point) is
         P3_lat, P3_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, boat_distance_to_target)
+        distance_to_current_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
+        
         P3_message.update({"time": timestamp,
                            "lat": P3_lat,
                            "lon": P3_lon,
-                           "alt": boat.altitude})
+                           "alt": boat.altitude,
+                           "distance": distance_to_current_P3})
         rc.send_message('P3', P3_message)
 
-        distance_to_current_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
+        
 
         # Point before P3 to help the drone line up behind the boat better
         # Especially when the boat is maneuvering
