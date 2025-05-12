@@ -31,27 +31,27 @@ def tester():
     use_filter = False
     started_descent = False # Bool to keep track when descent is started
     diversion_started = False # Check if diversion is started
-    diversion_point_reached = False # Check if divesrion point is reached
     fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
+    maneuver_boat = False
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     descent_lookahead = 4
-    cruise_altitude = 15 # In meters
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     altitude_error_gain = 0.2
     speed_gain = 0.2
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 2 # Heading in degrees
+    boat_movement_fluctuation = 3 # Heading in degrees
     boat_alt_fluctuation = 4 # Meters
     throttle_fluct = 50
 
     # BASE VALUES:
+    cruise_altitude = 15 # In meters
+    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     base_stall_speed = 12
     impact_speed = 2
     desired_boat_direction = 0
@@ -182,11 +182,17 @@ def tester():
         # commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
         #                                   boat_movement_fluctuation, desired_boat_direction)
 
-        # # Make sure boat is moving roughly in desired direction before fluctuating         
-        # if abs((boat.heading - desired_boat_direction + 180) % 360 - 180) <= 5:
         # Random walk for heading
         commanded_boat_direction = fl.boat_movement(fluct_boat_movement, 
                                     boat_movement_fluctuation, boat.heading)
+        
+        if maneuver_boat:
+            if iterator%12 == 0:
+                commanded_boat_direction = boat.heading + 60
+            else:
+                commanded_boat_direction = prev_commanded_boat_direction
+
+            prev_commanded_boat_direction = commanded_boat_direction
         
         commanded_boat_altitude = fl.boat_altitude(fluct_boat_alt, boat_alt_fluctuation, 
                                          desired_boat_altitude, iterator)
