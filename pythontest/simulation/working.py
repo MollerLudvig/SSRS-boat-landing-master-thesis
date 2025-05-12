@@ -13,7 +13,7 @@ from Guidance.kalman_OOSM import KalmanFilterXY
 
 #TODO: 
 # Add some fluctuations in boat movement, both lateral, (speed), and altitude - DONE
-# And test drone's perfromance when both following and landing
+# And test drone's performance when both following and landing
 # Test for different winds - DONE
 # Test for changing winds (over time and for different altitudes) - DONE (Not altitude)
 # Turbulence behind boat (possibly hard)
@@ -27,10 +27,11 @@ def tester():
     R = 6371000 # Earth radius
 
     # FLAGS:
-    verbose = True
-    use_filter = False
     started_descent = False # Bool to keep track when descent is started
     diversion_started = False # Check if diversion is started
+
+    verbose = True
+    use_filter = False
     fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
