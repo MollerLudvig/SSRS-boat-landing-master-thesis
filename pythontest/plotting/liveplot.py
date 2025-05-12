@@ -93,8 +93,9 @@ def update_plot(_):
     boatData.update()
 
     # Check if landed ( or maby rather distance to get collision data)
-    is_landed(collision_data, boatData, droneData, landing_threshold = 3.0, 
-              landing_offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
+    if enableCollisionWindow:
+        is_landed(collision_data, boatData, droneData, landing_threshold = 3.0, 
+                  landing_offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
 
     # 1. Update Global Position Window
     if enableGlobalWindow:
