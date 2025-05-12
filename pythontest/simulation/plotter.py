@@ -218,17 +218,16 @@ class Plotter:
 
         except Exception as e:
             print("Waiting for stream: ", e)
-        
 
     def run(self):
         while True:
             self.drone_data = self.rc.get_latest_stream_message("drone data")[1]
             self.boat_data = self.rc.get_latest_stream_message("boat data")[1]
 
-            # self.plot_trajectory()
+            self.plot_trajectory()
             # self.plot_sink_rate()
             # self.plot_altitude_error()
-            self.plot_filter_xy()
+            # self.plot_filter_xy()
             # self.plot_filter_latlon()
 
             sleep(0.1)

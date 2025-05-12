@@ -4,3 +4,4 @@ redis
 matplotlib
 pyproj
 asyncio
+pyserial
