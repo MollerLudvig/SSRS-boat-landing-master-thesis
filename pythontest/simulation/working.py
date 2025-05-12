@@ -82,6 +82,10 @@ def tester():
     rc = RedisClient()
     if verbose:
         print("Redis client initialized")
+    # For missionhandler abort condition
+    rc.add_stream_message("needed_glide_ratio", Gr)
+    rc.add_stream_message("stage", "started")
+    rc.send_message("stage", "started")
 
     
     drone_coordinates = []
@@ -90,12 +94,6 @@ def tester():
     P2_message = {}
     P3_message = {}
     gr_message = {}
-
-
-    # For missionhandler abort condition
-    rc.add_stream_message("needed_glide_ratio", Gr)
-    rc.add_stream_message("stage", "started")
-    rc.send_message("stage", "started")
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
