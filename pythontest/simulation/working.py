@@ -22,11 +22,10 @@ from Guidance.kalman_OOSM import KalmanFilterXY
 # Add a way to know if the drone landed or not
 # Test without aborting to see what will happen
 
-timestamp = time.time()
-
 def tester():
     # CONSTANTS
     R = 6371000 # Earth radius
+    timestamp = time.time()
 
     # FLAGS:
     started_descent = False # Bool to keep track when descent is started
