@@ -25,7 +25,6 @@ from Guidance.kalman_OOSM import KalmanFilterXY
 def tester():
     # CONSTANTS
     R = 6371000 # Earth radius
-    timestamp = time.time()
 
     # FLAGS:
     started_descent = False # Bool to keep track when descent is started
@@ -96,10 +95,6 @@ def tester():
     # For missionhandler abort condition
     rc.add_stream_message("needed_glide_ratio", Gr)
     rc.add_stream_message("stage", "started")
-    gr_message.update({"time": timestamp,
-                    "Gr": Gr,
-                    "needed_Gr": Gr})
-    rc.send_message("glide ratio", gr_message)
     rc.send_message("stage", "started")
 
     start_vehicles_simulation(drone, boat, base_throttle)
