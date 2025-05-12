@@ -128,10 +128,10 @@ def tester():
             update_without_kf(boat, boat_length)
             # Update boat position without filter
         elif iterator%3 == 0:
-            update_boat_position(kf, boat, boat_length)
+            update_boat_position(kf, boat, boat_length, timestamp)
             # Update boat position 
         else:
-            predict_kf(kf, boat, boat_length)
+            predict_kf(kf, boat, boat_length, timestamp)
 
         # Save kf state in CSV
         if use_filter:
@@ -476,7 +476,7 @@ def update_without_kf(boat, boat_length):
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
 
 
-def update_boat_position(kf, boat, boat_length):
+def update_boat_position(kf, boat, boat_length, timestamp):
     boat.update_possition_mavlink()
 
     # v = boat.speed * np.cos(np.deg2rad(boat.heading))
@@ -494,7 +494,7 @@ def update_boat_position(kf, boat, boat_length):
     update_object(boat, kf, boat_length)
 
 
-def predict_kf(kf, boat, boat_length):
+def predict_kf(kf, boat, boat_length, timestamp):
     kf.predict(timestamp)
 
     update_object(boat, kf, boat_length)
