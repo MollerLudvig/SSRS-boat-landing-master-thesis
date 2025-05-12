@@ -15,16 +15,27 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enableGlobalWindow = True
+enableGlobalWindow = False
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
-enableRelativeVelocityWindow = False
+enableRelativeVelocityWindow = True
 enableWindWindow = False
 enableCollisionWindow = False
 enableDistToP = False
 savePlots = False
+
+@dataclass
+class Colors:
+    boat : str = 'green'
+    drone : str = 'blue'
+    p1 : str = 'purple'
+    p2 : str = 'orange'
+    p3 : str = 'red'
+    collision : str = 'red'
+colors = Colors()
+
 
 redis_client = RedisClient(host="localhost", port=6379)
 callbacks = RedisCallbacks(redis_client)
@@ -80,6 +91,9 @@ if enableCollisionWindow:
     figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection")
     figCollision.suptitle(f"Collision Detection", fontsize=14)
 
+if enableDistToP:
+    figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3")
+    figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
 
 
@@ -105,23 +119,23 @@ def update_plot(_):
         # Prioritize simulation data when available
         if callbacks.P1:
             axGlobal.plot(callbacks.P1.lon[-5:], callbacks.P1.lat[-5:], 
-                         'o-', markersize=10, label="P1 (SIM)", color='purple', )
+                         'o-', markersize=10, label="P1 (SIM)", color=colors.p1, )
 
         if boatData.simulation.lat:
             axGlobal.plot(boatData.simulation.lon[-8:], boatData.simulation.lat[-8:], 
-                         'o-', markersize=10, label="Boat (SIM)", color=boat.color, fillstyle='none')
+                         'o-', markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
         elif boatData.gps.lat:
             print('Simdata not available, using GPS data (BOAT)')
             axGlobal.plot(boatData.gps.lon[-8:], boatData.gps.lat[-8:], 
-                         'o-', markersize=10, label="Boat (GPS)", color=boat.color, alpha=0.7, fillstyle='none')
+                         'o-', markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
 
         if droneData.simulation.lat:
             axGlobal.plot(droneData.simulation.lon[-8:], droneData.simulation.lat[-8:], 
-                         'x-', markersize=10, label="Drone (SIM)", color=drone.color)
+                         'x-', markersize=10, label="Drone (SIM)", color=colors.drone)
         elif droneData.gps.lat:
             print('Simdata not available, using GPS data (DRONE)')
             axGlobal.plot(droneData.gps.lon[-8:], droneData.gps.lat[-8:], 
-                         'x-', markersize=10, label="Drone (GPS)", color=drone.color, alpha=0.7)
+                         'x-', markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
             
         
             
@@ -362,64 +376,64 @@ def update_plot(_):
         
         # Generate relative velocity data points from simulation or position data
         # First, try to use simulation data
-        if droneData.simulation.vn and boatData.simulation.vn:
-            for i in range(min(len(droneData.simulation.time), len(boatData.simulation.time))):
-                vn_rel = droneData.simulation.vn[i] - boatData.simulation.vn[i]
-                ve_rel = droneData.simulation.ve[i] - boatData.simulation.ve[i]
-                vd_rel = droneData.simulation.vd[i] - boatData.simulation.vd[i]
-                v_mag = get_vector_magnitude(vn_rel, ve_rel, vd_rel)
+        # if droneData.simulation.vn and boatData.simulation.vn:
+        #     for i in range(min(len(droneData.simulation.time), len(boatData.simulation.time))):
+        #         vn_rel = droneData.simulation.vn[i] - boatData.simulation.vn[i]
+        #         ve_rel = droneData.simulation.ve[i] - boatData.simulation.ve[i]
+        #         vd_rel = droneData.simulation.vd[i] - boatData.simulation.vd[i]
+        #         v_mag = get_vector_magnitude(vn_rel, ve_rel, vd_rel)
                 
-                rel_vn_history.append(vn_rel)
-                rel_ve_history.append(ve_rel)
-                rel_vd_history.append(vd_rel)
-                rel_v_mag_history.append(v_mag)
-                time_history.append(droneData.simulation.time[i])
+        #         rel_vn_history.append(vn_rel)
+        #         rel_ve_history.append(ve_rel)
+        #         rel_vd_history.append(vd_rel)
+        #         rel_v_mag_history.append(v_mag)
+        #         time_history.append(droneData.simulation.time[i])
         # If no simulation data, try position data
-        elif droneData.position.vx and boatData.position.vx:
-            for i in range(min(len(droneData.position.time), len(boatData.position.time))):
-                vx_rel = droneData.position.vx[i] - boatData.position.vx[i]
-                vy_rel = droneData.position.vy[i] - boatData.position.vy[i]
-                vz_rel = droneData.position.vz[i] - boatData.position.vz[i]
-                v_mag = get_vector_magnitude(vx_rel, vy_rel, vz_rel)
-                
-                rel_vn_history.append(vx_rel)
-                rel_ve_history.append(vy_rel)
-                rel_vd_history.append(vz_rel)
-                rel_v_mag_history.append(v_mag)
-                time_history.append(droneData.position.time[i])
+        # elif droneData.position.vx and boatData.position.vx:
+        for i in range(min(len(droneData.position.time), len(boatData.position.time))):
+            vx_rel = droneData.position.vx[i] - boatData.position.vx[i]
+            vy_rel = droneData.position.vy[i] - boatData.position.vy[i]
+            vz_rel = droneData.position.vz[i] - boatData.position.vz[i]
+            v_mag = get_vector_magnitude(vx_rel, vy_rel)
+            
+            rel_vn_history.append(vx_rel)
+            rel_ve_history.append(vy_rel)
+            rel_vd_history.append(vz_rel)
+            rel_v_mag_history.append(v_mag)
+            time_history.append(droneData.position.time[i])
         
         # Plot the relative velocity data
         if time_history:
             # North relative velocity
             axsRelVel[0].clear()
-            axsRelVel[0].plot(time_history, rel_vn_history, label='North/X Relative', color='red')
+            axsRelVel[0].plot(time_history, rel_vn_history, label='X Relative', color='red')
             axsRelVel[0].set_ylabel("m/s")
-            axsRelVel[0].set_title("North/X Relative Velocity (Drone-Boat)")
+            axsRelVel[0].set_title("X Relative Velocity (Drone-Boat)")
             axsRelVel[0].legend()
             axsRelVel[0].grid(True)
             
             # East relative velocity
             axsRelVel[1].clear()
-            axsRelVel[1].plot(time_history, rel_ve_history, label='East/Y Relative', color='green')
+            axsRelVel[1].plot(time_history, rel_ve_history, label='Y Relative', color='green')
             axsRelVel[1].set_ylabel("m/s")
-            axsRelVel[1].set_title("East/Y Relative Velocity (Drone-Boat)")
+            axsRelVel[1].set_title("Y Relative Velocity (Drone-Boat)")
             axsRelVel[1].legend()
             axsRelVel[1].grid(True)
             
             # Down relative velocity
             axsRelVel[2].clear()
-            axsRelVel[2].plot(time_history, rel_vd_history, label='Down/Z Relative', color='blue')
+            axsRelVel[2].plot(time_history, rel_vd_history, label='Z Relative', color='blue')
             axsRelVel[2].set_ylabel("m/s")
-            axsRelVel[2].set_title("Down/Z Relative Velocity (Drone-Boat)")
+            axsRelVel[2].set_title("Z Relative Velocity (Drone-Boat)")
             axsRelVel[2].legend()
             axsRelVel[2].grid(True)
             
             # Absolute velocity magnitude
             axsRelVel[3].clear()
-            axsRelVel[3].plot(time_history, rel_v_mag_history, label='Velocity Magnitude', color='purple')
+            axsRelVel[3].plot(time_history, rel_v_mag_history, label='Velocity Magnitude (planar)', color='purple')
             axsRelVel[3].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
-            axsRelVel[3].set_title("Absolute Velocity Magnitude (Drone-Boat)")
+            axsRelVel[3].set_title("Absolute Velocity Diffrence (Planar)")
             axsRelVel[3].legend()
             axsRelVel[3].grid(True)
     
@@ -486,6 +500,35 @@ def update_plot(_):
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")
 
+
+    if enableDistToP:
+
+        # Distance to P1
+        axsDistToP[0].clear()
+        if callbacks.P1:
+            axsDistToP[0].plot(callbacks.P1.time[-300:], callbacks.P1.dist[-300:], label='Distance to P1', color=colors.p1)
+            axsDistToP[0].set_title("Distance to P1")
+            axsDistToP[0].set_ylabel("Distance (m)")
+            axsDistToP[0].legend()
+            axsDistToP[0].grid(True)
+        
+        # Distance to P2
+        axsDistToP[1].clear()
+        if callbacks.P2:
+            axsDistToP[1].plot(callbacks.P2.time[-300:], callbacks.P2.dist[-300:], label='Distance to P2', color=colors.p2)
+            axsDistToP[1].set_title("Distance to P2")
+            axsDistToP[1].set_ylabel("Distance (m)")
+            axsDistToP[1].legend()
+            axsDistToP[1].grid(True)
+        
+        # Distance to P3
+        axsDistToP[2].clear()
+        if callbacks.P3:
+            axsDistToP[2].plot(callbacks.P3.time[-300:], callbacks.P3.dist[-300:], label='Distance to P3', color=colors.p3)
+            axsDistToP[2].set_title("Distance to P3")
+            axsDistToP[2].set_ylabel("Distance (m)")
+            axsDistToP[2].legend()
+            axsDistToP[2].grid(True)
 
 
 # Show all plots non-blocking
