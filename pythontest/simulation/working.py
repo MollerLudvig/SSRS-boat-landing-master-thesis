@@ -98,6 +98,7 @@ def tester():
     start_vehicles_simulation(drone, boat, base_throttle)
 
     landing_iterator = 0
+    dist_to_start_coord = 0
     iterator = 0
 
     # Main loop
