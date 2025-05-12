@@ -389,18 +389,18 @@ def update_plot(_):
         #         rel_v_mag_history.append(v_mag)
         #         time_history.append(droneData.simulation.time[i])
         # If no simulation data, try position data
-        # elif droneData.position.vx and boatData.position.vx:
-        for i in range(min(len(droneData.position.time), len(boatData.position.time))):
-            vx_rel = droneData.position.vx[i] - boatData.position.vx[i]
-            vy_rel = droneData.position.vy[i] - boatData.position.vy[i]
-            vz_rel = droneData.position.vz[i] - boatData.position.vz[i]
-            v_mag = get_vector_magnitude(vx_rel, vy_rel)
-            
-            rel_vn_history.append(vx_rel)
-            rel_ve_history.append(vy_rel)
-            rel_vd_history.append(vz_rel)
-            rel_v_mag_history.append(v_mag)
-            time_history.append(droneData.position.time[i])
+        if droneData.position.vx and boatData.position.vx:
+            for i in range(min(len(droneData.position.time), len(boatData.position.time))):
+                vx_rel = droneData.position.vx[i] - boatData.position.vx[i]
+                vy_rel = droneData.position.vy[i] - boatData.position.vy[i]
+                vz_rel = droneData.position.vz[i] - boatData.position.vz[i]
+                v_mag = get_vector_magnitude(vx_rel, vy_rel)
+                
+                rel_vn_history.append(vx_rel)
+                rel_ve_history.append(vy_rel)
+                rel_vd_history.append(vz_rel)
+                rel_v_mag_history.append(v_mag)
+                time_history.append(droneData.position.time[i])
         
         # Plot the relative velocity data
         if time_history:

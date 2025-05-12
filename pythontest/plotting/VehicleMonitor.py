@@ -4,7 +4,7 @@ import math
 import time
 import argparse
 
-save_history = 50
+save_history = 300
 
 class VehicleMonitor:
     def __init__(self,name, udpPort, save_CSV=True, color='blue', 
