@@ -14,6 +14,9 @@ class ColissionData:
     delta_x: List[float] = field(default_factory=list)
     delta_y: List[float] = field(default_factory=list)
     delta_z: List[float] = field(default_factory=list)
+    delta_n: List[float] = field(default_factory=list)
+    delta_e: List[float] = field(default_factory=list)
+    delta_d: List[float] = field(default_factory=list)
 
 
 def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: VehicleData, 
@@ -44,7 +47,7 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
     
     # Process drone data within the common time window
     # Leave margin at the end to avoid edge effects
-    end_index = len(droneData.simulation.time) - 20 if len(droneData.simulation.time) > 20 else 0
+    end_index = len(droneData.simulation.time) - 5 if len(droneData.simulation.time) > 5 else 0
     
     for time_ind, time_val in enumerate(droneData.simulation.time[:end_index]):
         # Skip if outside common time window
@@ -83,7 +86,7 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         dd = droneData.simulation.alt[time_ind] - boatData.simulation.alt[closest_index]
         
         # NED to XYZ rotation around Z axis (apply boat's yaw)
-        yaw_rad = np.radians(boatData.simulation.yaw[closest_index])
+        yaw_rad = -np.radians(boatData.simulation.yaw[closest_index])
         dx = dn * np.cos(yaw_rad) - de * np.sin(yaw_rad)
         dy = dn * np.sin(yaw_rad) + de * np.cos(yaw_rad)
         dz = dd
@@ -105,6 +108,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         collision_data.delta_x.append(dx)
         collision_data.delta_y.append(dy)
         collision_data.delta_z.append(dz)
+        collision_data.delta_n.append(dn)
+        collision_data.delta_e.append(de)
+        collision_data.delta_d.append(dd)
         
         if collision_data.collision[-1]:
             print(f"Collision detected at time {time_val:.4f}s: distance = {distance:.2f}m")
