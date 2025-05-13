@@ -84,8 +84,8 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
                              lat0=boatData.simulation.lat[closest_index],
                              lon0=boatData.simulation.lon[closest_index])
         
-        # Get altitude difference (delta down)
-        dd = boatData.simulation.alt[closest_index] - droneData.simulation.alt[time_ind]
+        # Get altitude difference (delta down): This is actuallt inverted so from drones perspective but thats for plotting reasons
+        dd = droneData.simulation.alt[time_ind] - boatData.simulation.alt[closest_index]
         
         # NED to XYZ rotation around Z axis (apply boat's yaw)
         yaw_rad = np.radians(boatData.simulation.yaw[closest_index])
