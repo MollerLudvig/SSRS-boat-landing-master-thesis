@@ -207,7 +207,8 @@ def tester():
         # Calculate the distance between drone and boat
         drone_distance_to_boat = wp.dist_between_coords(drone.lat, drone.lon, boat.deck_lat, boat.deck_lon)
 
-        P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
+        P2_altitude = cruise_altitude - boat.altitude + aim_under_boat
+        P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, P2_altitude, Gr)
         P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
         # P2_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P2_lat, P2_lon))
         P2_distance_to_drone = (drone_distance_to_boat - P2_distance)
