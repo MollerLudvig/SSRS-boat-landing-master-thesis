@@ -56,7 +56,7 @@ class StageData:
 
 
 class RedisCallbacks:
-    def __init__(self, redis_client: RedisClient):
+    def __init__(self, redis_client: RedisClient, start_time):
         self.redis_client = redis_client
         self.P1 = PositionData()
         self.P2 = PositionData()
@@ -66,6 +66,7 @@ class RedisCallbacks:
         self.glide_ratio_data = GrData()
         self.StateData = StageData()
         self.follow_diversion_data = FollowDiversionData()
+        self.start_time = start_time
         
         # Setup callbacks for each position channel
         self.setup_callbacks()
@@ -86,7 +87,8 @@ class RedisCallbacks:
         """Callback for P1 position updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
-                self.P1.time.append(content['time'])
+                # self.P1.time.append(content['time'])
+                self.P1.time.append(content['time']-self.start_time)
                 self.P1.lat.append(content['lat'])
                 self.P1.lon.append(content['lon'])
                 self.P1.alt.append(content['alt'])
@@ -99,7 +101,8 @@ class RedisCallbacks:
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
                 
-                self.P2.time.append(content['time'])
+                # self.P2.time.append(content['time'])
+                self.P2.time.append(content['time']-self.start_time)
                 self.P2.lat.append(content['lat'])
                 self.P2.lon.append(content['lon'])
                 self.P2.alt.append(content['alt'])
@@ -111,7 +114,8 @@ class RedisCallbacks:
         """Callback for P3 position updates"""
         if isinstance(content, dict) and all(k in content for k in ['time', 'lat', 'lon', 'alt', 'distance']):
             with Lock():
-                self.P3.time.append(content['time'])
+                # self.P3.time.append(content['time'])
+                self.P3.time.append(content['time']-self.start_time)
                 self.P3.lat.append(content['lat'])
                 self.P3.lon.append(content['lon'])
                 self.P3.alt.append(content['alt'])
@@ -123,7 +127,8 @@ class RedisCallbacks:
         """Callback for drone data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'xs', 'altitude', 'z_wanted', 'needed_sr', 'wanted_sr', 'actual_sr', 'Gr']):
-                self.drone_data.time.append(content['time'])
+                # self.drone_data.time.append(content['time'])
+                self.drone_data.time.append(content['time']-self.start_time)
                 self.drone_data.xs.append(content['xs'])
                 self.drone_data.altitude.append(content['altitude'])
                 self.drone_data.z_wanted.append(content['z_wanted'])
@@ -138,7 +143,8 @@ class RedisCallbacks:
         """Callback for boat data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'kf_x', 'kf_y', 'kf_lat', 'kf_lon', 'kf_speed', 'kf_heading', 'real_heading', 'real_lat', 'real_lon']):
-                self.boat_data.time.append(content['time'])
+                # self.boat_data.time.append(content['time'])
+                self.boat_data.time.append(content['time']-self.start_time)
                 self.boat_data.kf_x.append(content['kf_x'])
                 self.boat_data.kf_y.append(content['kf_y'])
                 self.boat_data.kf_lat.append(content['kf_lat'])
@@ -155,7 +161,8 @@ class RedisCallbacks:
         """Callback for follow diversion data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'drone_distance', 'stall_speed', 'P2_distance', 'boat_speed']):
-                self.follow_diversion_data.time.append(content['time'])
+                # self.follow_diversion_data.time.append(content['time'])
+                self.follow_diversion_data.time.append(content['time']-self.start_time)
                 self.follow_diversion_data.drone_distance.append(content['drone_distance'])
                 self.follow_diversion_data.stall_speed.append(content['stall_speed'])
                 self.follow_diversion_data.P2_distance.append(content['P2_distance'])
@@ -167,7 +174,8 @@ class RedisCallbacks:
         """Callback for glide ratio data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time','Gr', 'needed_gr']):
-                self.glide_ratio_data.time.append(content['time'])
+                # self.glide_ratio_data.time.append(content['time'])
+                self.glide_ratio_data.time.append(content['time']-self.start_time)
                 self.glide_ratio_data.gr.append(content['Gr'])
                 self.glide_ratio_data.needed_gr.append(content['needed_gr'])
             else:
@@ -177,7 +185,8 @@ class RedisCallbacks:
         """Callback for stage data updates"""
         with Lock():
             if isinstance(content, dict) and all(k in content for k in ['time', 'stage']):
-                self.StateData.time.append(content['time'])
+                # self.StateData.time.append(content['time'])
+                self.StateData.time.append(content['time']-self.start_time)
                 self.StateData.stage.append(content['stage'])
             else:
                 print(f"Invalid data format for stage data: {content}", flush=True)

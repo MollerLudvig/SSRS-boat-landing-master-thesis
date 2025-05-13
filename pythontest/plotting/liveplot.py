@@ -7,7 +7,7 @@ from variabels import VehicleData  # Import the VehicleData class
 from redisCallbacks import RedisCallbacks
 from redis_communication import RedisClient
 from threading import Thread, Lock
-from coordinate_conv import latlon_to_ned
+from coordinate_conv import latlon_to_ned, latlon_to_xy
 from dataclasses import dataclass, field
 from collission import ColissionData, is_landed
 
@@ -26,6 +26,8 @@ enableCollisionWindow = False
 enableDistToP = True
 savePlots = False
 
+displayed_indices = 100
+
 @dataclass
 class Colors:
     boat : str = 'green'
@@ -38,15 +40,16 @@ colors = Colors()
 
 
 redis_client = RedisClient(host="localhost", port=6379)
-callbacks = RedisCallbacks(redis_client)
+start_time = time.time()
+callbacks = RedisCallbacks(redis_client, start_time=start_time)
 print("Redis client initialized.")
 callbacks.start_listening()
 print("Redis callbacks started.")
 
 
 # Initialize vehicles  
-drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue')
-boat = VehicleMonitor(name="Boat", udpPort=14561, color='green')
+drone = VehicleMonitor(name="Drone", udpPort=14551, color='blue', start_time=start_time)
+boat = VehicleMonitor(name="Boat", udpPort=14561, color='green', start_time=start_time)
 collision_data = ColissionData()
 
 drone.connect()
@@ -150,18 +153,18 @@ def update_plot(_):
         # Roll, Pitch, Yaw plot
         axsDroneAtt[0].clear()
         if droneData.simulation.roll:
-            axsDroneAtt[0].plot(droneData.simulation.time, droneData.simulation.roll, 
+            axsDroneAtt[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.roll[-displayed_indices:], 
                                label='Roll (SIM)', color='red')
-            axsDroneAtt[0].plot(droneData.simulation.time, droneData.simulation.pitch, 
+            axsDroneAtt[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.pitch[-displayed_indices:], 
                                label='Pitch (SIM)', color='green')
-            axsDroneAtt[0].plot(droneData.simulation.time, droneData.simulation.yaw, 
+            axsDroneAtt[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.yaw[-displayed_indices:], 
                                label='Yaw (SIM)', color='blue')
         elif droneData.attitude.roll:
-            axsDroneAtt[0].plot(droneData.attitude.time, droneData.attitude.roll, 
+            axsDroneAtt[0].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.roll[-displayed_indices:], 
                                label='Roll', color='red', alpha=0.7)
-            axsDroneAtt[0].plot(droneData.attitude.time, droneData.attitude.pitch, 
+            axsDroneAtt[0].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.pitch[-displayed_indices:], 
                                label='Pitch', color='green', alpha=0.7)
-            axsDroneAtt[0].plot(droneData.attitude.time, droneData.attitude.yaw, 
+            axsDroneAtt[0].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.yaw[-displayed_indices:], 
                                label='Yaw', color='blue', alpha=0.7)
         axsDroneAtt[0].set_ylabel("Degrees")
         axsDroneAtt[0].set_title("Attitude")
@@ -171,18 +174,18 @@ def update_plot(_):
         # Angular rates plot
         axsDroneAtt[1].clear()
         if droneData.simulation.xgyro:
-            axsDroneAtt[1].plot(droneData.simulation.time, droneData.simulation.xgyro, 
+            axsDroneAtt[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.xgyro[-displayed_indices:], 
                                label='Roll rate (SIM)', color='red')
-            axsDroneAtt[1].plot(droneData.simulation.time, droneData.simulation.ygyro, 
+            axsDroneAtt[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ygyro[-displayed_indices:], 
                                label='Pitch rate (SIM)', color='green')
-            axsDroneAtt[1].plot(droneData.simulation.time, droneData.simulation.zgyro, 
+            axsDroneAtt[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.zgyro[-displayed_indices:], 
                                label='Yaw rate (SIM)', color='blue')
         elif droneData.attitude.roll_speed:
-            axsDroneAtt[1].plot(droneData.attitude.time, droneData.attitude.roll_speed, 
+            axsDroneAtt[1].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.roll_speed[-displayed_indices:], 
                                label='Roll rate', color='red', alpha=0.7)
-            axsDroneAtt[1].plot(droneData.attitude.time, droneData.attitude.pitch_speed, 
+            axsDroneAtt[1].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.pitch_speed[-displayed_indices:], 
                                label='Pitch rate', color='green', alpha=0.7)
-            axsDroneAtt[1].plot(droneData.attitude.time, droneData.attitude.yaw_speed, 
+            axsDroneAtt[1].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.yaw_speed[-displayed_indices:], 
                                label='Yaw rate', color='blue', alpha=0.7)
         axsDroneAtt[1].set_ylabel("Degrees/sec")
         axsDroneAtt[1].set_title("Angular Rates")
@@ -192,18 +195,18 @@ def update_plot(_):
         # Accelerations plot
         axsDroneAtt[2].clear()
         if droneData.simulation.xacc:
-            axsDroneAtt[2].plot(droneData.simulation.time, droneData.simulation.xacc, 
+            axsDroneAtt[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.xacc[-displayed_indices:], 
                                label='X Accel (SIM)', color='red')
-            axsDroneAtt[2].plot(droneData.simulation.time, droneData.simulation.yacc, 
+            axsDroneAtt[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.yacc[-displayed_indices:], 
                                label='Y Accel (SIM)', color='green')
-            axsDroneAtt[2].plot(droneData.simulation.time, droneData.simulation.zacc, 
+            axsDroneAtt[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.zacc[-displayed_indices:], 
                                label='Z Accel (SIM)', color='blue')
         elif droneData.imu.ax:
-            axsDroneAtt[2].plot(droneData.imu.time, droneData.imu.ax, 
+            axsDroneAtt[2].plot(droneData.imu.time[-displayed_indices:], droneData.imu.ax[-displayed_indices:], 
                                label='X Accel', color='red', alpha=0.7)
-            axsDroneAtt[2].plot(droneData.imu.time, droneData.imu.ay, 
+            axsDroneAtt[2].plot(droneData.imu.time[-displayed_indices:], droneData.imu.ay[-displayed_indices:], 
                                label='Y Accel', color='green', alpha=0.7)
-            axsDroneAtt[2].plot(droneData.imu.time, droneData.imu.az, 
+            axsDroneAtt[2].plot(droneData.imu.time[-displayed_indices:], droneData.imu.az[-displayed_indices:], 
                                label='Z Accel', color='blue', alpha=0.7)
         axsDroneAtt[2].set_ylabel("m/s²")
         axsDroneAtt[2].set_title("Accelerations")
@@ -216,18 +219,18 @@ def update_plot(_):
         # Roll, Pitch, Yaw plot
         axsBoatAtt[0].clear()
         if boatData.simulation.roll:
-            axsBoatAtt[0].plot(boatData.simulation.time, boatData.simulation.roll, 
+            axsBoatAtt[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.roll[-displayed_indices:], 
                               label='Roll (SIM)', color='red')
-            axsBoatAtt[0].plot(boatData.simulation.time, boatData.simulation.pitch, 
+            axsBoatAtt[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.pitch[-displayed_indices:], 
                               label='Pitch (SIM)', color='green')
-            axsBoatAtt[0].plot(boatData.simulation.time, boatData.simulation.yaw, 
+            axsBoatAtt[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.yaw[-displayed_indices:], 
                               label='Yaw (SIM)', color='blue')
         elif boatData.attitude.roll:
-            axsBoatAtt[0].plot(boatData.attitude.time, boatData.attitude.roll, 
+            axsBoatAtt[0].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.roll[-displayed_indices:], 
                               label='Roll', color='red', alpha=0.7)
-            axsBoatAtt[0].plot(boatData.attitude.time, boatData.attitude.pitch, 
+            axsBoatAtt[0].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.pitch[-displayed_indices:], 
                               label='Pitch', color='green', alpha=0.7)
-            axsBoatAtt[0].plot(boatData.attitude.time, boatData.attitude.yaw, 
+            axsBoatAtt[0].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.yaw[-displayed_indices:], 
                               label='Yaw', color='blue', alpha=0.7)
         axsBoatAtt[0].set_ylabel("Degrees")
         axsBoatAtt[0].set_title("Attitude")
@@ -237,18 +240,18 @@ def update_plot(_):
         # Angular rates plot
         axsBoatAtt[1].clear()
         if boatData.simulation.xgyro:
-            axsBoatAtt[1].plot(boatData.simulation.time, boatData.simulation.xgyro, 
+            axsBoatAtt[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.xgyro[-displayed_indices:], 
                               label='Roll rate (SIM)', color='red')
-            axsBoatAtt[1].plot(boatData.simulation.time, boatData.simulation.ygyro, 
+            axsBoatAtt[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ygyro[-displayed_indices:], 
                               label='Pitch rate (SIM)', color='green')
-            axsBoatAtt[1].plot(boatData.simulation.time, boatData.simulation.zgyro, 
+            axsBoatAtt[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.zgyro[-displayed_indices:], 
                               label='Yaw rate (SIM)', color='blue')
         elif boatData.attitude.roll_speed:
-            axsBoatAtt[1].plot(boatData.attitude.time, boatData.attitude.roll_speed, 
+            axsBoatAtt[1].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.roll_speed[-displayed_indices:], 
                               label='Roll rate', color='red', alpha=0.7)
-            axsBoatAtt[1].plot(boatData.attitude.time, boatData.attitude.pitch_speed, 
+            axsBoatAtt[1].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.pitch_speed[-displayed_indices:], 
                               label='Pitch rate', color='green', alpha=0.7)
-            axsBoatAtt[1].plot(boatData.attitude.time, boatData.attitude.yaw_speed, 
+            axsBoatAtt[1].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.yaw_speed[-displayed_indices:], 
                               label='Yaw rate', color='blue', alpha=0.7)
         axsBoatAtt[1].set_ylabel("Degrees/sec")
         axsBoatAtt[1].set_title("Angular Rates")
@@ -258,18 +261,18 @@ def update_plot(_):
         # Accelerations plot
         axsBoatAtt[2].clear()
         if boatData.simulation.xacc:
-            axsBoatAtt[2].plot(boatData.simulation.time, boatData.simulation.xacc, 
+            axsBoatAtt[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.xacc[-displayed_indices:], 
                               label='X Accel (SIM)', color='red')
-            axsBoatAtt[2].plot(boatData.simulation.time, boatData.simulation.yacc, 
+            axsBoatAtt[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.yacc[-displayed_indices:], 
                               label='Y Accel (SIM)', color='green')
-            axsBoatAtt[2].plot(boatData.simulation.time, boatData.simulation.zacc, 
+            axsBoatAtt[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.zacc[-displayed_indices:], 
                               label='Z Accel (SIM)', color='blue')
         elif boatData.imu.ax:
-            axsBoatAtt[2].plot(boatData.imu.time, boatData.imu.ax, 
+            axsBoatAtt[2].plot(boatData.imu.time[-displayed_indices:], boatData.imu.ax[-displayed_indices:], 
                               label='X Accel', color='red', alpha=0.7)
-            axsBoatAtt[2].plot(boatData.imu.time, boatData.imu.ay, 
+            axsBoatAtt[2].plot(boatData.imu.time[-displayed_indices:], boatData.imu.ay[-displayed_indices:], 
                               label='Y Accel', color='green', alpha=0.7)
-            axsBoatAtt[2].plot(boatData.imu.time, boatData.imu.az, 
+            axsBoatAtt[2].plot(boatData.imu.time[-displayed_indices:], boatData.imu.az[-displayed_indices:], 
                               label='Z Accel', color='blue', alpha=0.7)
         axsBoatAtt[2].set_ylabel("m/s²")
         axsBoatAtt[2].set_title("Accelerations")
@@ -282,10 +285,10 @@ def update_plot(_):
         # X velocity
         axsDroneVel[0].clear()
         if droneData.simulation.vn:
-            axsDroneVel[0].plot(droneData.simulation.time, droneData.simulation.vn, 
+            axsDroneVel[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vn[-displayed_indices:], 
                                label='North Velocity (SIM)', color='red')
         elif droneData.position.vx:
-            axsDroneVel[0].plot(droneData.position.time, droneData.position.vx, 
+            axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], droneData.position.vx[-displayed_indices:], 
                                label='X Velocity', color='red', alpha=0.7)
         axsDroneVel[0].set_ylabel("m/s")
         axsDroneVel[0].set_title("North/X Velocity")
@@ -295,10 +298,10 @@ def update_plot(_):
         # Y velocity
         axsDroneVel[1].clear()
         if droneData.simulation.ve:
-            axsDroneVel[1].plot(droneData.simulation.time, droneData.simulation.ve, 
+            axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
                                label='East Velocity (SIM)', color='green')
         elif droneData.position.vy:
-            axsDroneVel[1].plot(droneData.position.time, droneData.position.vy, 
+            axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], droneData.position.vy[-displayed_indices:], 
                                label='Y Velocity', color='green', alpha=0.7)
         axsDroneVel[1].set_ylabel("m/s")
         axsDroneVel[1].set_title("East/Y Velocity")
@@ -308,10 +311,10 @@ def update_plot(_):
         # Z velocity
         axsDroneVel[2].clear()
         if droneData.simulation.vd:
-            axsDroneVel[2].plot(droneData.simulation.time, droneData.simulation.vd, 
+            axsDroneVel[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vd[-displayed_indices:], 
                                label='Down Velocity (SIM)', color='blue')
         elif droneData.position.vz:
-            axsDroneVel[2].plot(droneData.position.time, droneData.position.vz, 
+            axsDroneVel[2].plot(droneData.position.time[-displayed_indices:], droneData.position.vz[-displayed_indices:], 
                                label='Z Velocity', color='blue', alpha=0.7)
         axsDroneVel[2].set_ylabel("m/s")
         axsDroneVel[2].set_xlabel("Time (s)")
@@ -324,10 +327,10 @@ def update_plot(_):
         # X velocity
         axsBoatVel[0].clear()
         if boatData.simulation.vn:
-            axsBoatVel[0].plot(boatData.simulation.time, boatData.simulation.vn, 
+            axsBoatVel[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vn[-displayed_indices:], 
                               label='North Velocity (SIM)', color='red')
         elif boatData.position.vx:
-            axsBoatVel[0].plot(boatData.position.time, boatData.position.vx, 
+            axsBoatVel[0].plot(boatData.position.time[-displayed_indices:], boatData.position.vx[-displayed_indices:], 
                               label='X Velocity', color='red', alpha=0.7)
         axsBoatVel[0].set_ylabel("m/s")
         axsBoatVel[0].set_title("North/X Velocity")
@@ -337,10 +340,10 @@ def update_plot(_):
         # Y velocity
         axsBoatVel[1].clear()
         if boatData.simulation.ve:
-            axsBoatVel[1].plot(boatData.simulation.time, boatData.simulation.ve, 
+            axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
                               label='East Velocity (SIM)', color='green')
         elif boatData.position.vy:
-            axsBoatVel[1].plot(boatData.position.time, boatData.position.vy, 
+            axsBoatVel[1].plot(boatData.position.time[-displayed_indices:], boatData.position.vy[-displayed_indices:], 
                               label='Y Velocity', color='green', alpha=0.7)
         axsBoatVel[1].set_ylabel("m/s")
         axsBoatVel[1].set_title("East/Y Velocity")
@@ -350,10 +353,10 @@ def update_plot(_):
         # Z velocity
         axsBoatVel[2].clear()
         if boatData.simulation.vd:
-            axsBoatVel[2].plot(boatData.simulation.time, boatData.simulation.vd, 
+            axsBoatVel[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vd[-displayed_indices:], 
                               label='Down Velocity (SIM)', color='blue')
         elif boatData.position.vz:
-            axsBoatVel[2].plot(boatData.position.time, boatData.position.vz, 
+            axsBoatVel[2].plot(boatData.position.time[-displayed_indices:], boatData.position.vz[-displayed_indices:], 
                               label='Z Velocity', color='blue', alpha=0.7)
         axsBoatVel[2].set_ylabel("m/s")
         axsBoatVel[2].set_xlabel("Time (s)")
@@ -405,7 +408,7 @@ def update_plot(_):
         if time_history:
             # North relative velocity
             axsRelVel[0].clear()
-            axsRelVel[0].plot(time_history, rel_vn_history, label='North V', color='red')
+            axsRelVel[0].plot(time_history[-displayed_indices:], rel_vn_history[-displayed_indices:], label='North V', color='red')
             axsRelVel[0].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[0].set_title("North Relative Velocity (Drone-Boat)")
@@ -414,7 +417,7 @@ def update_plot(_):
             
             # East relative velocity
             axsRelVel[1].clear()
-            axsRelVel[1].plot(time_history, rel_ve_history, label='East V', color='green')
+            axsRelVel[1].plot(time_history[-displayed_indices:], rel_ve_history[-displayed_indices:], label='East V', color='green')
             axsRelVel[1].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[1].set_title("North Relative Velocity (Drone-Boat)")
@@ -423,7 +426,7 @@ def update_plot(_):
             
             # Down relative velocity
             axsRelVel[2].clear()
-            axsRelVel[2].plot(time_history, rel_vd_history, label='Z V', color='blue')
+            axsRelVel[2].plot(time_history[-displayed_indices:], rel_vd_history[-displayed_indices:], label='Z V', color='blue')
             axsRelVel[2].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[2].set_title("Z Relative Velocity (Drone-Boat)")
@@ -432,7 +435,7 @@ def update_plot(_):
             
             # Absolute velocity magnitude
             axsRelVel[3].clear()
-            axsRelVel[3].plot(time_history, rel_v_mag_history, label='Velocity Magnitude (planar)', color='purple')
+            axsRelVel[3].plot(time_history[-displayed_indices:], rel_v_mag_history[-displayed_indices:], label='Velocity Magnitude (planar)', color='purple')
             axsRelVel[3].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[3].set_title("Absolute Velocity Diffrence (Planar)")
@@ -444,7 +447,7 @@ def update_plot(_):
         # Wind speed
         axsWind[0].clear()
         if droneData.wind.speed:  # Assuming wind data comes from boat
-            axsWind[0].plot(droneData.wind.time, droneData.wind.speed, label='Wind Speed', color='cyan')
+            axsWind[0].plot(droneData.wind.time[-displayed_indices:], droneData.wind.speed[-displayed_indices:], label='Wind Speed', color='cyan')
             axsWind[0].set_title("Wind Speed")
             axsWind[0].set_ylabel("m/s")
             axsWind[0].legend()
@@ -453,7 +456,7 @@ def update_plot(_):
         # Wind direction
         axsWind[1].clear()
         if droneData.wind.direction:
-            axsWind[1].plot(droneData.wind.time, droneData.wind.direction, label='Wind Direction', color='magenta')
+            axsWind[1].plot(droneData.wind.time[-displayed_indices:], droneData.wind.direction[-displayed_indices:], label='Wind Direction', color='magenta')
             axsWind[1].set_title("Wind Direction")
             axsWind[1].set_ylabel("Degrees")
             axsWind[1].set_xlabel("Time (s)")
@@ -465,7 +468,7 @@ def update_plot(_):
     if enableCollisionWindow:
         # Collision detection
         axsCollision[0, 0].clear()
-        axsCollision[0, 0].plot(collision_data.time, collision_data.distance, label='Absolute distance', color='red')
+        axsCollision[0, 0].plot(collision_data.time[-displayed_indices:], collision_data.distance[-displayed_indices:], label='Absolute distance', color='red')
         axsCollision[0, 0].set_title("Absolute Distance, boat to drone")
         axsCollision[0, 0].set_ylabel("Collision")
         axsCollision[0, 0].legend()
@@ -473,7 +476,7 @@ def update_plot(_):
         
         # Collision distance
         axsCollision[0, 1].clear()
-        axsCollision[0, 1].plot(collision_data.time, collision_data.delta_x, label='Delta X', color='blue')
+        axsCollision[0, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_x[-displayed_indices:], label='Delta X', color='blue')
         axsCollision[0, 1].set_title("Delta X to Collision")
         axsCollision[0, 1].set_ylabel("Distance (m)")
         axsCollision[0, 1].legend()
@@ -481,7 +484,7 @@ def update_plot(_):
         
         # Collision delta time
         axsCollision[1, 0].clear()
-        axsCollision[1, 0].plot(collision_data.time, collision_data.delta_y, label='Delta Y', color='green')
+        axsCollision[1, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_y[-displayed_indices:], label='Delta Y', color='green')
         axsCollision[1, 0].set_title("Delta Y to Collision")
         axsCollision[1, 0].set_ylabel("Distance (m)")
         axsCollision[1, 0].legend()
@@ -489,7 +492,7 @@ def update_plot(_):
         
         # Collision delta x
         axsCollision[1, 1].clear()
-        axsCollision[1, 1].plot(collision_data.time, collision_data.delta_z, label='Delta Z', color='orange')
+        axsCollision[1, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_z[-displayed_indices:], label='Delta Z', color='orange')
         axsCollision[1, 1].set_title("Delta Z to Collision")
         axsCollision[1, 1].set_ylabel("Distance (m)")
         axsCollision[1, 1].legend()
@@ -497,7 +500,7 @@ def update_plot(_):
 
         # Delta time
         axsCollision[2, 0].clear()
-        axsCollision[2, 0].plot(collision_data.delta_time, label='Delta Time', color='purple')
+        axsCollision[2, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
         axsCollision[2, 0].set_title("Delta Time measurments")
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")
@@ -508,7 +511,7 @@ def update_plot(_):
         # Distance to P1
         axsDistToP[0].clear()
         if callbacks.P1:
-            axsDistToP[0].plot(callbacks.P1.time[-300:], callbacks.P1.dist[-300:], label='Distance to P1', color=colors.p1)
+            axsDistToP[0].plot(callbacks.P1.time[-(int(displayed_indices/3)):], callbacks.P1.dist[-(int(displayed_indices/3)):], label='Distance to P1', color=colors.p1)
             axsDistToP[0].set_title("Distance to P1")
             axsDistToP[0].set_ylabel("Distance (m)")
             axsDistToP[0].legend()
@@ -517,7 +520,7 @@ def update_plot(_):
         # Distance to P2
         axsDistToP[1].clear()
         if callbacks.P2:
-            axsDistToP[1].plot(callbacks.P2.time[-300:], callbacks.P2.dist[-300:], label='Distance to P2', color=colors.p2)
+            axsDistToP[1].plot(callbacks.P2.time[-(int(displayed_indices/3)):], callbacks.P2.dist[-(int(displayed_indices/3)):], label='Distance to P2', color=colors.p2)
             axsDistToP[1].set_title("Distance to P2")
             axsDistToP[1].set_ylabel("Distance (m)")
             axsDistToP[1].legend()
@@ -526,7 +529,7 @@ def update_plot(_):
         # Distance to P3
         axsDistToP[2].clear()
         if callbacks.P3:
-            axsDistToP[2].plot(callbacks.P3.time[-300:], callbacks.P3.dist[-300:], label='Distance to P3', color=colors.p3)
+            axsDistToP[2].plot(callbacks.P3.time[-(int(displayed_indices/3)):], callbacks.P3.dist[-(int(displayed_indices/3)):], label='Distance to P3', color=colors.p3)
             axsDistToP[2].set_title("Distance to P3")
             axsDistToP[2].set_ylabel("Distance (m)")
             axsDistToP[2].legend()
