@@ -173,11 +173,11 @@ class RedisCallbacks:
     def update_gr_data(self, timestamp, content):
         """Callback for glide ratio data updates"""
         with Lock():
-            if isinstance(content, dict) and all(k in content for k in ['time','Gr', 'needed_gr']):
+            if isinstance(content, dict) and all(k in content for k in ['time','Gr', 'needed_Gr']):
                 # self.glide_ratio_data.time.append(content['time'])
                 self.glide_ratio_data.time.append(content['time']-self.start_time)
                 self.glide_ratio_data.gr.append(content['Gr'])
-                self.glide_ratio_data.needed_gr.append(content['needed_gr'])
+                self.glide_ratio_data.needed_gr.append(content['needed_Gr'])
             else:
                 print(f"Invalid data format for glide ratio data: {content}", flush=True)
 
