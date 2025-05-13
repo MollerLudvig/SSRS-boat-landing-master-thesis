@@ -390,8 +390,9 @@ def update_plot(_):
                 vx_rel = droneData.gps.vx[i] - boatData.gps.vx[i]
                 vy_rel = droneData.gps.vy[i] - boatData.gps.vy[i]
                 vz_rel = droneData.gps.vz[i] - boatData.gps.vz[i]
-                v_mag = get_vector_magnitude(vx_rel, vy_rel)
-
+                v_drone = np.sqrt(droneData.gps.vx[i]**2 + droneData.gps.vy[i]**2)
+                v_boat = np.sqrt(boatData.gps.vx[i]**2 + boatData.gps.vy[i]**2)
+                v_mag = v_boat-v_drone
 
                 
                 rel_vn_history.append(vx_rel)

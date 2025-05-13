@@ -50,6 +50,7 @@ def tester():
     boat_movement_fluctuation = 3 # Heading in degrees
     boat_alt_fluctuation = 4 # Meters
     throttle_fluct = 50
+    turning_fluctuation_angle = 45 # Degrees
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
@@ -191,7 +192,7 @@ def tester():
         
         if maneuver_boat:
             if iterator%12 == 0:
-                commanded_boat_direction = boat.heading + 30
+                commanded_boat_direction = boat.heading + turning_fluctuation_angle
             else:
                 commanded_boat_direction = prev_commanded_boat_direction
 
