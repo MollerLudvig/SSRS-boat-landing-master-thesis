@@ -514,7 +514,7 @@ def update_plot(_):
 
         # Delta time
         axsCollision[2, 0].clear()
-        axsCollision[2, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
+        axsCollision[2, 0].plot(collision_data.delta_time_timestamp[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
         axsCollision[2, 0].set_title("Delta Time measurments")
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")

@@ -8,6 +8,7 @@ from coordinate_conv import latlon_to_xy
 class ColissionData:
     time: List[float] = field(default_factory=list)
     delta_time: List[float] = field(default_factory=list)
+    delta_time_timestamp: List[float] = field(default_factory=list)
     collision: List[bool] = field(default_factory=list)
     distance: List[float] = field(default_factory=list)
     delta_x: List[float] = field(default_factory=list)
@@ -62,14 +63,8 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         # Skip if time difference is too large
         if time_diff > max_time_delta:
             skipped_points += 1
-            # Still add data to collision_data for consistency
-            collision_data.time.append(time_val)
+            collision_data.delta_time_timestamp.append(time_val)
             collision_data.delta_time.append(time_diff)
-            collision_data.collision.append(collision_data.collision[-1] if collision_data.collision else False)
-            collision_data.distance.append(collision_data.distance[-1] if collision_data.distance else 0)
-            collision_data.delta_x.append(collision_data.delta_x[-1] if collision_data.delta_x else 0)
-            collision_data.delta_y.append(collision_data.delta_y[-1] if collision_data.delta_y else 0)
-            collision_data.delta_z.append(collision_data.delta_z[-1] if collision_data.delta_z else 0)
             continue
         
         # Update stats
@@ -104,6 +99,7 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         # Record data
         collision_data.time.append(time_val)
         collision_data.delta_time.append(time_diff)
+        collision_data.delta_time_timestamp.append(time_val)
         collision_data.collision.append(distance < threshold)
         collision_data.distance.append(distance)
         collision_data.delta_x.append(dx)
