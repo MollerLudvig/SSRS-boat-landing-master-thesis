@@ -385,12 +385,14 @@ def update_plot(_):
         #         rel_v_mag_history.append(v_mag)
         #         time_history.append(droneData.simulation.time[i])
         # If no simulation data, try position data
-        if droneData.position.vx and boatData.position.vx:
+        if droneData.gps.time and boatData.gps.time:
             for i in range(min(len(droneData.position.time), len(boatData.position.time))):
-                vx_rel = droneData.position.vx[i] - boatData.position.vx[i]
-                vy_rel = droneData.position.vy[i] - boatData.position.vy[i]
-                vz_rel = droneData.position.vz[i] - boatData.position.vz[i]
+                vx_rel = droneData.gps.vx[i] - boatData.gps.vx[i]
+                vy_rel = droneData.gps.vy[i] - boatData.gps.vy[i]
+                vz_rel = droneData.gps.vz[i] - boatData.gps.vz[i]
                 v_mag = get_vector_magnitude(vx_rel, vy_rel)
+
+
                 
                 rel_vn_history.append(vx_rel)
                 rel_ve_history.append(vy_rel)
