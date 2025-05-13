@@ -15,7 +15,7 @@ class VehicleMonitor:
         self.name = name
         self.color = color
         self.start_time =start_time
-        self.save_history = 200
+        self.save_history = 300
 
         self.enableDroneWindow = enableDroneWindow
         self.enableBoatWindow = enableBoatWindow
