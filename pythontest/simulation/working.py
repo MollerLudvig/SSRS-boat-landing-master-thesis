@@ -414,7 +414,7 @@ def tester():
 
                 drone.follow_target([intermediate_P3_lat, P3_lat, boat_target_lat], 
                                     [intermediate_P3_lon, P3_lon, boat_target_lon], 
-                                    [boat.altitude, boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
+                                    [boat.altitude-aim_under_boat, boat.altitude-aim_under_boat, boat.altitude-aim_under_boat])
 
         elif drone.stage == "diversion":
             print("DIVERTING", flush=True)
