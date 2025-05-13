@@ -86,9 +86,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         dz = dd
         
         # Apply offset transform
-        dx = offset_transform[0]
-        dy = offset_transform[1]
-        dz = offset_transform[2]
+        dx += offset_transform[0]
+        dy += offset_transform[1]
+        dz += offset_transform[2]
         
         # Calculate distance
         distance = np.sqrt(dx**2 + dy**2 + dz**2)
