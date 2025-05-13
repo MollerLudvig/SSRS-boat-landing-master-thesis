@@ -15,7 +15,7 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enableGlobalWindow = False
+enableGlobalWindow = True
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
@@ -122,7 +122,7 @@ def update_plot(_):
                          'o-', markersize=10, label="P1 (SIM)", color=colors.p1, )
 
         if boatData.simulation.lat:
-            axGlobal.plot(boatData.simulation.lon[-8:], boatData.simulation.lat[-8:], 
+            axGlobal.plot(boatData.simulation.lon[-10:], boatData.simulation.lat[-10:], 
                          'o-', markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
         elif boatData.gps.lat:
             print('Simdata not available, using GPS data (BOAT)')
@@ -130,16 +130,12 @@ def update_plot(_):
                          'o-', markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
 
         if droneData.simulation.lat:
-            axGlobal.plot(droneData.simulation.lon[-8:], droneData.simulation.lat[-8:], 
+            axGlobal.plot(droneData.simulation.lon[-10:], droneData.simulation.lat[-10:], 
                          'x-', markersize=10, label="Drone (SIM)", color=colors.drone)
         elif droneData.gps.lat:
             print('Simdata not available, using GPS data (DRONE)')
             axGlobal.plot(droneData.gps.lon[-8:], droneData.gps.lat[-8:], 
                          'x-', markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
-            
-        
-            
-        
             
         axGlobal.set_xlabel("Longitude")
         axGlobal.set_ylabel("Latitude") 

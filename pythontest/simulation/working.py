@@ -35,7 +35,7 @@ def tester():
     fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
-    maneuver_boat = False
+    maneuver_boat = True
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
@@ -43,7 +43,7 @@ def tester():
     descent_lookahead = 4
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.2
-    speed_gain = 0.2
+    speed_gain = 0.4
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
 
     # FLUCTUATIONS:
@@ -191,7 +191,7 @@ def tester():
         
         if maneuver_boat:
             if iterator%12 == 0:
-                commanded_boat_direction = boat.heading + 60
+                commanded_boat_direction = boat.heading + 30
             else:
                 commanded_boat_direction = prev_commanded_boat_direction
 
@@ -208,7 +208,8 @@ def tester():
 
         P2_distance = wp.calc_P2(drone.speed, desired_boat_speed, drone.altitude-boat.altitude+aim_under_boat, Gr)
         P2_lat, P2_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading-180, P2_distance) # -180 because behind
-        P2_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P2_lat, P2_lon))
+        # P2_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P2_lat, P2_lon))
+        P2_distance_to_drone = (drone_distance_to_boat - P2_distance)
 
         P2_message.update({"time": timestamp,
                           "lat": P2_lat,
@@ -219,7 +220,8 @@ def tester():
 
         P1_lat, P1_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading-180, 20)
         P1_distance = wp.dist_between_coords(P1_lat, P1_lon, boat.deck_lat, boat.deck_lon)
-        P1_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P1_lat, P1_lon))
+        # P1_distance_to_drone = np.abs(wp.dist_between_coords(drone.lat, drone.lon, P1_lat, P1_lon))
+        P1_distance_to_drone = (drone_distance_to_boat - P1_distance)
         P1_message.update({"time": timestamp,
                            "lat": P1_lat,
                            "lon": P1_lon,
@@ -278,8 +280,10 @@ def tester():
 
             print(f"P1 distance_ {P1_distance}")
             print(f"Drone distance: {drone_distance_to_boat}")
+            print(f"Drone to P1: {P1_distance_to_drone}")
             print(f"Desired boat speed: {max(drone_total_stall_speed, wanted_boat_speed)}")
             print(f"Actual boat speed: {boat.speed}")
+            print(f"Relative speed: {drone.speed - boat.speed}")
 
         # Land on boat
         elif drone.stage == "land":
