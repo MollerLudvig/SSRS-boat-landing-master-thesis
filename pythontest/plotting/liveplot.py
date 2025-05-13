@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 # from pymavlink import mavutil
 import time
 import numpy as np
@@ -7,7 +8,7 @@ from variabels import VehicleData  # Import the VehicleData class
 from redisCallbacks import RedisCallbacks
 from redis_communication import RedisClient
 from threading import Thread, Lock
-from coordinate_conv import latlon_to_ned, latlon_to_xy
+from coordinate_conv import latlon_to_ned, latlon_to_xy, latlon_to_xy_vectors
 from dataclasses import dataclass, field
 from collission import ColissionData, is_landed
 
@@ -15,15 +16,23 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enableGlobalWindow = True
+enablePositionWindow = True
+plotLocalPosition = True
+
 enableDroneAttitudeWindow = False
-enableBoatAttitudeWindow = False
+enableBoatAttitudeWindow = True
+
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
+
 enableWindWindow = False
-enableCollisionWindow = False
+
+enableCollisionWindow = True
+
 enableDistToP = False
+
+
 savePlots = False
 
 displayed_indices = 100
@@ -62,8 +71,12 @@ droneData = VehicleData(drone)
 boatData = VehicleData(boat)
 
 # Create figures and axes based on configuration
-if enableGlobalWindow:
-    figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
+if enablePositionWindow:
+    if plotLocalPosition:
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Local Position View", constrained_layout=True)
+        figGlobal.suptitle("Local Position (NED)", fontsize=25)
+    else:
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
     figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
@@ -103,6 +116,122 @@ if enableDistToP:
 def get_vector_magnitude(x, y, z=0):
     return np.sqrt(x**2 + y**2 + z**2)
 
+refLat = None
+refLon = None
+
+def plot_local_position():
+    global refLat, refLon
+    axGlobal.clear()
+
+    # Choose a fixed origin for local frame (boat's first sim point if available)
+    if boatData.simulation.lat and refLat is None and refLon is None:
+        refLat = boatData.simulation.lat[0]
+        refLon = boatData.simulation.lon[0]
+    elif boatData.gps.lat and refLat is None and refLon is None:
+        refLat = boatData.gps.lat[0]
+        refLon = boatData.gps.lon[0]
+    elif refLat is None and refLon is None:
+        print("No boat position data available to set local origin.")
+        return  # or skip plotting
+
+    # Plot P1
+    if callbacks.P1:
+        x, y = latlon_to_xy_vectors(callbacks.P1.lat[-10:], callbacks.P1.lon[-10:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="P1", color=colors.p1)
+    else:
+        print("No P1 data available.")
+
+    # Plot P2
+    if callbacks.P2:
+        x, y = latlon_to_xy_vectors(callbacks.P2.lat[-10:], callbacks.P2.lon[-10:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="P2", color=colors.p2)
+    else:
+        print("No P2 data available.")
+
+    # Plot boat position
+    if boatData.simulation.lat:
+        x, y = latlon_to_xy_vectors(boatData.simulation.lat[-50:], boatData.simulation.lon[-50:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
+        xLast, yLast = latlon_to_xy_vectors(boatData.simulation.lat[-1], boatData.simulation.lon[-1], refLat, refLon)
+        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.boat, fillstyle='none')
+    elif boatData.gps.lat:
+        print('Simdata not available, using GPS data (BOAT)')
+        x, y = latlon_to_xy_vectors(boatData.gps.lat[-50:], boatData.gps.lon[-50:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
+        xLast, yLast = latlon_to_xy_vectors(boatData.gps.lat[-1], boatData.gps.lon[-1], refLat, refLon)
+        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
+
+    # Plot drone position
+    if droneData.simulation.lat:
+        x, y = latlon_to_xy_vectors(droneData.simulation.lat[-50:], droneData.simulation.lon[-50:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="Drone (SIM)", color=colors.drone)
+        xLast, yLast = latlon_to_xy_vectors(droneData.simulation.lat[-1], droneData.simulation.lon[-1], refLat, refLon)
+        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.drone)
+    elif droneData.gps.lat:
+        print('Simdata not available, using GPS data (DRONE)')
+        x, y = latlon_to_xy_vectors(droneData.gps.lat[-50:], droneData.gps.lon[-50:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
+        xLast, yLast = latlon_to_xy_vectors(droneData.gps.lat[-1], droneData.gps.lon[-1], refLat, refLon)
+        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.drone, alpha=0.7)
+
+    # Axis formatting
+    axGlobal.set_xlabel("East (m)", fontsize=18)
+    axGlobal.set_ylabel("North (m)", fontsize=18)
+    axGlobal.legend(fontsize=18)
+    axGlobal.tick_params(axis='both', labelsize=18)
+    axGlobal.grid(True)
+    axGlobal.axis('equal')
+
+
+def plot_global_position_():
+    axGlobal.clear()
+    
+    # Prioritize simulation data when available
+    if callbacks.P1:
+        axGlobal.plot(callbacks.P1.lon[-10:], callbacks.P1.lat[-10:], 
+                    markersize=10, label="P1", color=colors.p1)
+        
+    if callbacks.P2:
+        axGlobal.plot(callbacks.P2.lon[-10:], callbacks.P2.lat[-10:], 
+                    markersize=10, label="P2", color=colors.p2)
+
+    if boatData.simulation.lat:
+        axGlobal.plot(boatData.simulation.lon[-50:], boatData.simulation.lat[-50:], 
+                    markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
+        axGlobal.plot(boatData.simulation.lon[-1], boatData.simulation.lat[-1], 
+                    'x',markersize=15, color=colors.boat, fillstyle='none')
+    elif boatData.gps.lat:
+        print('Simdata not available, using GPS data (BOAT)')
+        axGlobal.plot(boatData.gps.lon[-50:], boatData.gps.lat[-50:], 
+                    markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
+        axGlobal.plot(boatData.gps.lon[-1], boatData.gps.lat[-1], 
+                    'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
+
+    if droneData.simulation.lat:
+        axGlobal.plot(droneData.simulation.lon[-50:], droneData.simulation.lat[-50:], 
+                        markersize=10, label="Drone (SIM)", color=colors.drone)
+        axGlobal.plot(droneData.simulation.lon[-1], droneData.simulation.lat[-1], 
+                        'x',markersize=15, color=colors.drone)
+        
+    elif droneData.gps.lat:
+        print('Simdata not available, using GPS data (DRONE)')
+        axGlobal.plot(droneData.gps.lon[-50:], droneData.gps.lat[-50:], 
+                    markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
+        axGlobal.plot(droneData.gps.lon[-1], droneData.gps.lat[-1], 
+                    'x', markersize=15, color=colors.drone, alpha=0.7)
+        
+    axGlobal.set_xlabel("Longitude", fontsize=18)
+    axGlobal.set_ylabel("Latitude", fontsize=18) 
+    axGlobal.legend(fontsize=18)
+    axGlobal.tick_params(axis='both', labelsize=18)
+    axGlobal.xaxis.set_major_formatter(FormatStrFormatter('%.4f'))  # for longitude
+    axGlobal.yaxis.set_major_formatter(FormatStrFormatter('%.4f'))  # for latitude
+    axGlobal.grid(True)
+    if any([droneData.gps.lat, droneData.simulation.lat, 
+            boatData.gps.lat, boatData.simulation.lat]):
+        axGlobal.axis('equal')
+
+
 def update_plot(_):
     """Update all plot windows with latest data"""
 
@@ -116,51 +245,13 @@ def update_plot(_):
                   offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
 
     # 1. Update Global Position Window
-    if enableGlobalWindow:
-        axGlobal.clear()
+    if enablePositionWindow:
+        if plotLocalPosition:
+            plot_local_position()
+        else:
+            plot_global_position_()
+
         
-        # Prioritize simulation data when available
-        if callbacks.P1:
-            axGlobal.plot(callbacks.P1.lon[-10:], callbacks.P1.lat[-10:], 
-                        markersize=10, label="P1", color=colors.p1)
-            
-        if callbacks.P2:
-            axGlobal.plot(callbacks.P2.lon[-10:], callbacks.P2.lat[-10:], 
-                        markersize=10, label="P2", color=colors.p2)
-
-        if boatData.simulation.lat:
-            axGlobal.plot(boatData.simulation.lon[-50:], boatData.simulation.lat[-50:], 
-                        markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
-            axGlobal.plot(boatData.simulation.lon[-1], boatData.simulation.lat[-1], 
-                        'x',markersize=15, color=colors.boat, fillstyle='none')
-        elif boatData.gps.lat:
-            print('Simdata not available, using GPS data (BOAT)')
-            axGlobal.plot(boatData.gps.lon[-50:], boatData.gps.lat[-50:], 
-                        markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
-            axGlobal.plot(boatData.gps.lon[-1], boatData.gps.lat[-1], 
-                        'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
-
-        if droneData.simulation.lat:
-            axGlobal.plot(droneData.simulation.lon[-50:], droneData.simulation.lat[-50:], 
-                         markersize=10, label="Drone (SIM)", color=colors.drone)
-            axGlobal.plot(droneData.simulation.lon[-1], droneData.simulation.lat[-1], 
-                         'x',markersize=15, color=colors.drone)
-            
-        elif droneData.gps.lat:
-            print('Simdata not available, using GPS data (DRONE)')
-            axGlobal.plot(droneData.gps.lon[-50:], droneData.gps.lat[-50:], 
-                        markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
-            axGlobal.plot(droneData.gps.lon[-1], droneData.gps.lat[-1], 
-                        'x', markersize=15, color=colors.drone, alpha=0.7)
-            
-        axGlobal.set_xlabel("Longitude", fontsize=18)
-        axGlobal.set_ylabel("Latitude", fontsize=18) 
-        axGlobal.legend(fontsize=18)
-        axGlobal.tick_params(axis='both', labelsize=18)
-        axGlobal.grid(True)
-        if any([droneData.gps.lat, droneData.simulation.lat, 
-                boatData.gps.lat, boatData.simulation.lat]):
-            axGlobal.axis('equal')
             
     # 2. Update Drone Attitude Window
     if enableDroneAttitudeWindow and len(axsDroneAtt) == 3:
@@ -477,7 +568,6 @@ def update_plot(_):
             axsWind[1].legend()
             axsWind[1].grid(True)
 
-
     # 8. Update Collision Window
     if enableCollisionWindow:
         # Collision detection
@@ -518,6 +608,9 @@ def update_plot(_):
         axsCollision[2, 0].set_title("Delta Time measurments")
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")
+
+
+
 
 
     if enableDistToP:
@@ -566,7 +659,7 @@ except KeyboardInterrupt:
 
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
-        if enableGlobalWindow:
+        if enablePositionWindow:
             figGlobal.savefig(f"plots/global_position_{timestamp}.png")
         if enableDroneAttitudeWindow:
             figDroneAtt.savefig(f"plots/drone_attitude_{timestamp}.png")
@@ -586,3 +679,4 @@ except KeyboardInterrupt:
     # Close all plot windows
     plt.close('all')
     exit(0)
+
