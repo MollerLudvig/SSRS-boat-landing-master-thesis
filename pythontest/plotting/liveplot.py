@@ -20,10 +20,10 @@ enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
-enableRelativeVelocityWindow = True
+enableRelativeVelocityWindow = False
 enableWindWindow = False
-enableCollisionWindow = False
-enableDistToP = True
+enableCollisionWindow = True
+enableDistToP = False
 savePlots = False
 
 displayed_indices = 100
@@ -63,8 +63,8 @@ boatData = VehicleData(boat)
 
 # Create figures and axes based on configuration
 if enableGlobalWindow:
-    figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View")
-    figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=14)
+    figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
+    figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
     figDroneAtt, axsDroneAtt = plt.subplots(3, 1, figsize=(10, 8), num="Drone Attitude")
@@ -121,28 +121,42 @@ def update_plot(_):
         
         # Prioritize simulation data when available
         if callbacks.P1:
-            axGlobal.plot(callbacks.P1.lon[-5:], callbacks.P1.lat[-5:], 
-                         'o-', markersize=10, label="P1 (SIM)", color=colors.p1, )
+            axGlobal.plot(callbacks.P1.lon[-10:], callbacks.P1.lat[-10:], 
+                        markersize=10, label="P1", color=colors.p1)
+            
+        if callbacks.P2:
+            axGlobal.plot(callbacks.P2.lon[-10:], callbacks.P2.lat[-10:], 
+                        markersize=10, label="P2", color=colors.p2)
 
         if boatData.simulation.lat:
-            axGlobal.plot(boatData.simulation.lon[-10:], boatData.simulation.lat[-10:], 
-                         'o-', markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
+            axGlobal.plot(boatData.simulation.lon[-50:], boatData.simulation.lat[-50:], 
+                        markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
+            axGlobal.plot(boatData.simulation.lon[-1], boatData.simulation.lat[-1], 
+                        'x',markersize=15, color=colors.boat, fillstyle='none')
         elif boatData.gps.lat:
             print('Simdata not available, using GPS data (BOAT)')
-            axGlobal.plot(boatData.gps.lon[-8:], boatData.gps.lat[-8:], 
-                         'o-', markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
+            axGlobal.plot(boatData.gps.lon[-50:], boatData.gps.lat[-50:], 
+                        markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
+            axGlobal.plot(boatData.gps.lon[-1], boatData.gps.lat[-1], 
+                        'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
 
         if droneData.simulation.lat:
-            axGlobal.plot(droneData.simulation.lon[-10:], droneData.simulation.lat[-10:], 
-                         'x-', markersize=10, label="Drone (SIM)", color=colors.drone)
+            axGlobal.plot(droneData.simulation.lon[-50:], droneData.simulation.lat[-50:], 
+                         markersize=10, label="Drone (SIM)", color=colors.drone)
+            axGlobal.plot(droneData.simulation.lon[-1], droneData.simulation.lat[-1], 
+                         'x',markersize=15, color=colors.drone)
+            
         elif droneData.gps.lat:
             print('Simdata not available, using GPS data (DRONE)')
-            axGlobal.plot(droneData.gps.lon[-8:], droneData.gps.lat[-8:], 
-                         'x-', markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
+            axGlobal.plot(droneData.gps.lon[-50:], droneData.gps.lat[-50:], 
+                        markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
+            axGlobal.plot(droneData.gps.lon[-1], droneData.gps.lat[-1], 
+                        'x', markersize=15, color=colors.drone, alpha=0.7)
             
-        axGlobal.set_xlabel("Longitude")
-        axGlobal.set_ylabel("Latitude") 
-        axGlobal.legend()
+        axGlobal.set_xlabel("Longitude", fontsize=18)
+        axGlobal.set_ylabel("Latitude", fontsize=18) 
+        axGlobal.legend(fontsize=18)
+        axGlobal.tick_params(axis='both', labelsize=18)
         axGlobal.grid(True)
         if any([droneData.gps.lat, droneData.simulation.lat, 
                 boatData.gps.lat, boatData.simulation.lat]):
