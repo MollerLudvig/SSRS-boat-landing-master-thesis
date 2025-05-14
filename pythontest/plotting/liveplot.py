@@ -241,7 +241,7 @@ def update_plot(_):
 
     # Check if landed ( or maby rather distance to get collision data)
     if enableCollisionWindow:
-        is_landed(collision_data, boatData, droneData, landing_threshold = [10, 5, 5], 
+        is_landed(collision_data, boatData, droneData, landing_threshold = [2, 1, 1], 
                   offset_transform = [2.5, 0.0, 1.5], max_time_delta = 0.07)
 
     # 1. Update Global Position Window
@@ -251,7 +251,7 @@ def update_plot(_):
         else:
             plot_global_position_()
 
-        
+
             
     # 2. Update Drone Attitude Window
     if enableDroneAttitudeWindow and len(axsDroneAtt) == 3:
