@@ -116,9 +116,6 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         collision_data.delta_n.append(dn)
         collision_data.delta_e.append(de)
         collision_data.delta_d.append(dd)
-        
-        if collision_data.collision[-1]:
-            print(f"Collision detected at time {time_val:.4f}s: distance = {distance:.2f}m")
     
     # Print time delta statistics
     if points_processed > 0:

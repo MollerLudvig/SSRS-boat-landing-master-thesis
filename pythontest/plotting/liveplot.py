@@ -617,7 +617,6 @@ def update_plot(_):
 
         # Plot collision 
         if collision_data.collision[-displayed_indices:]:
-            print("Collision detected")
             axsCollision[2, 1].clear()
             axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
             axsCollision[2, 1].set_title("Collision")
