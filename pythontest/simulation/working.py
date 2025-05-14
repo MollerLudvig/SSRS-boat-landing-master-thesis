@@ -438,7 +438,7 @@ def tester():
             dist_to_return_point = wp.dist_between_coords(drone.lat, drone.lon, 
                                                              return_lat, return_lon)
         
-            if dist_to_return_point < 25 and current_wp == 2:
+            if dist_to_return_point < 40 and current_wp == 2:
                 # Go follow mode after diversion
                 rc.send_message("stage", "follow")
                 rc.add_stream_message("stage", "follow")

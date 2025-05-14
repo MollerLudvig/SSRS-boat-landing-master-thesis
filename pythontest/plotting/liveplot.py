@@ -17,7 +17,7 @@ Simulation = True
 
 # Configure window display options
 enablePositionWindow = True
-plotLocalPosition = True
+plotLocalPosition = False
 
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
@@ -76,7 +76,7 @@ if enablePositionWindow:
         figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Local Position View", constrained_layout=True)
         figGlobal.suptitle("Local Position (NED)", fontsize=25)
     else:
-        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(6, 4), num="Global Position View", constrained_layout=True)
     figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
@@ -196,26 +196,26 @@ def plot_global_position_():
                     markersize=10, label="P2", color=colors.p2)
 
     if boatData.simulation.lat:
-        axGlobal.plot(boatData.simulation.lon[-50:], boatData.simulation.lat[-50:], 
+        axGlobal.plot(boatData.simulation.lon[-95:], boatData.simulation.lat[-95:], 
                     markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
         axGlobal.plot(boatData.simulation.lon[-1], boatData.simulation.lat[-1], 
                     'x',markersize=15, color=colors.boat, fillstyle='none')
     elif boatData.gps.lat:
         print('Simdata not available, using GPS data (BOAT)')
-        axGlobal.plot(boatData.gps.lon[-50:], boatData.gps.lat[-50:], 
+        axGlobal.plot(boatData.gps.lon[-95:], boatData.gps.lat[-95:], 
                     markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
         axGlobal.plot(boatData.gps.lon[-1], boatData.gps.lat[-1], 
                     'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
 
     if droneData.simulation.lat:
-        axGlobal.plot(droneData.simulation.lon[-50:], droneData.simulation.lat[-50:], 
+        axGlobal.plot(droneData.simulation.lon[-95:], droneData.simulation.lat[-95:], 
                         markersize=10, label="Drone (SIM)", color=colors.drone)
         axGlobal.plot(droneData.simulation.lon[-1], droneData.simulation.lat[-1], 
                         'x',markersize=15, color=colors.drone)
         
     elif droneData.gps.lat:
         print('Simdata not available, using GPS data (DRONE)')
-        axGlobal.plot(droneData.gps.lon[-50:], droneData.gps.lat[-50:], 
+        axGlobal.plot(droneData.gps.lon[-95:], droneData.gps.lat[-95:], 
                     markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
         axGlobal.plot(droneData.gps.lon[-1], droneData.gps.lat[-1], 
                     'x', markersize=15, color=colors.drone, alpha=0.7)
