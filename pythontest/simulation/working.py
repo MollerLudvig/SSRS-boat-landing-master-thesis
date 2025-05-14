@@ -40,12 +40,12 @@ def tester():
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     needed_Gr = 1/20 # Glide ratio
-    descent_lookahead = 0.5
+    descent_lookahead = 4
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.2
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
-    impact_speed = 0.2
+    impact_speed = 2
 
     # FLUCTUATIONS:
     boat_movement_fluctuation = 3 # Heading in degrees
@@ -55,7 +55,7 @@ def tester():
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
-    boat_length = 5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+    boat_length = 4 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     base_stall_speed = 12
     desired_boat_direction = 0
     desired_boat_altitude = 3
