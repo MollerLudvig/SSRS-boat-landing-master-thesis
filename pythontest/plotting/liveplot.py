@@ -20,7 +20,7 @@ enablePositionWindow = True
 plotLocalPosition = True
 
 enableDroneAttitudeWindow = False
-enableBoatAttitudeWindow = True
+enableBoatAttitudeWindow = False
 
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
@@ -35,7 +35,7 @@ enableDistToP = False
 
 savePlots = False
 
-displayed_indices = 100
+displayed_indices = 150
 
 @dataclass
 class Colors:
@@ -241,8 +241,8 @@ def update_plot(_):
 
     # Check if landed ( or maby rather distance to get collision data)
     if enableCollisionWindow:
-        is_landed(collision_data, boatData, droneData, threshold = 3.0, 
-                  offset_transform = [-2.5, 0.0, 0.0], max_time_delta = 0.065)
+        is_landed(collision_data, boatData, droneData, landing_threshold = [10, 5, 5], 
+                  offset_transform = [2.5, 0.0, 1.5], max_time_delta = 0.07)
 
     # 1. Update Global Position Window
     if enablePositionWindow:
@@ -608,6 +608,30 @@ def update_plot(_):
         axsCollision[2, 0].set_title("Delta Time measurments")
         axsCollision[2, 0].set_ylabel("Time (s)")
         axsCollision[2, 0].set_xlabel("Timesteps")
+
+        # Mask out none collision timepoints in distance data
+        collision_mask = np.array(collision_data.collision[-displayed_indices:])
+        collision_distance = np.array(collision_data.distance[-displayed_indices:])
+        collision_distance[~collision_mask] = 0
+
+
+        # Plot collision 
+        if collision_data.collision[-displayed_indices:]:
+            print("Collision detected")
+            axsCollision[2, 1].clear()
+            axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
+            axsCollision[2, 1].set_title("Collision")
+            axsCollision[2, 1].set_ylabel("Collision")
+            axsCollision[2, 1].legend()
+            axsCollision[2, 1].grid(True)
+        else:
+            axsCollision[2, 1].clear()
+            axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='No Collision', color='red')
+            axsCollision[2, 1].set_title("No Collision")
+            axsCollision[2, 1].set_ylabel("Distance (m)")
+            axsCollision[2, 1].legend()
+            axsCollision[2, 1].grid(True)
+
 
 
 

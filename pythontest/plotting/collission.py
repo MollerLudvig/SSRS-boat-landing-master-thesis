@@ -20,7 +20,7 @@ class ColissionData:
 
 
 def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: VehicleData, 
-            threshold: float = 2.0, offset_transform: List[float] = [0, 0, 0],
+            landing_threshold: List[float] = [0, 0, 0], offset_transform: List[float] = [0, 0, 0],
             max_time_delta: float = 0.1):  # Add maximum allowed time difference
 
     # Get time ranges for both datasets
@@ -94,16 +94,21 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         # Apply offset transform
         dx += offset_transform[0]
         dy += offset_transform[1]
-        dz += offset_transform[2]
+        dz -= offset_transform[2]
         
         # Calculate distance
         distance = np.sqrt(dx**2 + dy**2 + dz**2)
+
+        if np.abs(dx) < landing_threshold[0] and np.abs(dy) < landing_threshold[1] and np.abs(dz) < landing_threshold[2]:
+            collision_data.collision.append(True)
+            print(f"Collision detected at time {time_val:.4f}s: distance = {distance:.2f}m")
+        else:
+            collision_data.collision.append(False)
         
         # Record data
         collision_data.time.append(time_val)
         collision_data.delta_time.append(time_diff)
         collision_data.delta_time_timestamp.append(time_val)
-        collision_data.collision.append(distance < threshold)
         collision_data.distance.append(distance)
         collision_data.delta_x.append(dx)
         collision_data.delta_y.append(dy)
