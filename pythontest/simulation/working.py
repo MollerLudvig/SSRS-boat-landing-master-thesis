@@ -40,11 +40,12 @@ def tester():
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     needed_Gr = 1/20 # Glide ratio
-    descent_lookahead = 4
+    descent_lookahead = 0.5
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.2
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
+    impact_speed = 0.2
 
     # FLUCTUATIONS:
     boat_movement_fluctuation = 3 # Heading in degrees
@@ -54,9 +55,8 @@ def tester():
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
-    boat_length = 2.5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+    boat_length = 5 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     base_stall_speed = 12
-    impact_speed = 2
     desired_boat_direction = 0
     desired_boat_altitude = 3
     base_throttle = 1800
@@ -312,7 +312,9 @@ def tester():
                 # Follow boat with some lookahead (30m) to smooth out the path
                 boat_lh_lat, boat_lh_lon = wp.calc_look_ahead_point(boat.deck_lat, boat.deck_lon, boat.heading, 30)
 
-                drone.follow_target([boat_lh_lat], [boat_lh_lon], [cruise_altitude])
+                drone.follow_target([boat_lh_lat, boat_target_lat], 
+                                    [boat_lh_lon, boat_target_lon], 
+                                    [cruise_altitude, cruise_altitude])
 
             # When the drone passed P2 + lookahead it should start descending (landing)
             else:
@@ -337,6 +339,7 @@ def tester():
                 print(f"Drone distance: {drone_distance_to_boat}")
                 print(f"Boat to target: {boat_distance_to_target}")
                 print(f"Dist to prev: {distance_to_prev_P3}")
+                print(f"Previous Gr: {prev_Gr}")
                 print("\n")
 
                 # Calculate distance to new P3 and set prev_P3 to new P3
