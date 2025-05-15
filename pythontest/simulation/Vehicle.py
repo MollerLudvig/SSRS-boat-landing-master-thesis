@@ -1,6 +1,6 @@
 from pymavlink import mavutil
 from subprocess import Popen, PIPE
-from time import sleep
+from time import sleep, time
 import numpy as np
 
 class Vehicle():
@@ -93,6 +93,7 @@ class Vehicle():
 
     def update_possition_mavlink(self):
         pos_msg = self.get_message('GLOBAL_POSITION_INT')
+        self.measurment_time = time()
         self.lat = pos_msg.lat / 1e7
         self.lon = pos_msg.lon / 1e7
         self.lat_sim = pos_msg.lat / 1e7
@@ -105,6 +106,6 @@ class Vehicle():
         self.altitude = pos_msg.alt/1000
 
         # Global to body frame rotation (rotate by -heading)
-        headingRad = np.deg2rad(pos_msg.hdg / 100)
+        headingRad = np.deg2rad(self.heading)
         self.vx = self.v_lat * np.cos(headingRad) + self.v_lon * np.sin(headingRad)
         self.vy = -self.v_lat * np.sin(headingRad) + self.v_lon * np.cos(headingRad)

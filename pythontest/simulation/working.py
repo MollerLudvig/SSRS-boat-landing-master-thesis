@@ -41,7 +41,7 @@ def tester():
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     needed_Gr = 1/20 # Glide ratio
-    descent_lookahead = 4
+    descent_lookahead = 0
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.2
     speed_gain = 0.25
@@ -49,15 +49,16 @@ def tester():
     impact_speed = 2
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 3 # Heading in degrees
-    boat_alt_fluctuation = 4 # Meters
+    boat_movement_fluctuation = 0 # Heading in degrees
+    boat_alt_fluctuation = 0 # Meters
     throttle_fluct = 50
-    turning_fluctuation_angle = 40 # Degrees
+    turning_fluctuation_angle = 0 # Degrees
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
     boat_length = 4 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     base_stall_speed = 12
+    impact_speed = 0.2
     desired_boat_direction = 0
     desired_boat_altitude = 3
     base_throttle = 1800
@@ -97,6 +98,7 @@ def tester():
     P2_message = {}
     P3_message = {}
     gr_message = {}
+    kf_message = {}
 
     start_vehicles_simulation(drone, boat, base_throttle)
 
@@ -144,14 +146,15 @@ def tester():
                             "kf_y": kf.x[1][0],
                             "kf_lat": kf.lat,
                             "kf_lon": kf.lon,
-                            "kf_speed": kf.x[2][0],
-                            "kf_heading": kf.x[3][0],
+                            "kf_speed": kf.x[3][0],
+                            "kf_heading": np.rad2deg(kf.x[2][0]),
                             "real_heading": boat.heading,
                             "real_lat": boat.lat_sim,
                             "real_lon": boat.lon_sim})
         
         if verbose and use_filter:
              print(f"kf x: {kf.x[0][0]}, kf y: {kf.x[1][0]}")
+
 
         drone_wind_msg = drone.get_message('WIND')
         wind_speed = drone_wind_msg.speed
@@ -300,6 +303,10 @@ def tester():
 
             # If drone is behind P2 + lookahead it should just keep flying towards the boat at cruise_altitude
             if (drone_distance_to_boat > P2_distance + descent_lookahead) and (not started_descent):
+
+                # Approac P2 at atlast 2m/s
+                if impact_speed < 2:
+                    desired_boat_speed = drone.speed - 2
                 boat.set_speed(desired_boat_speed)
 
                 print(f"P2 distance: {P2_distance}")
@@ -410,7 +417,7 @@ def tester():
                 rc.add_stream_message("needed_glide_ratio", needed_Gr)
 
                 # Drone has landed on boat
-                if drone.altitude < boat.altitude + 1.5:
+                if drone.altitude < boat.altitude + 0:
                     rc.send_message("stage", "diversion")
                     rc.add_stream_message("stage", "diversion")
 
@@ -463,6 +470,9 @@ def tester():
         
         # No command
         else:
+            # Approac P2 at atlast 5m/s
+            if impact_speed < 5:
+                desired_boat_speed = drone.speed - 10
             boat.set_speed(desired_boat_speed)
             # Move boat
             boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
@@ -514,8 +524,8 @@ def update_boat_position(kf: KalmanFilterXY, boat: Boat, boat_length, timestamp)
     update_object(boat, kf, boat_length)
 
 
-def predict_kf(kf, boat, boat_length, timestamp):
-    kf.predict(timestamp)
+def predict_kf(kf: KalmanFilterXY, boat: Boat, boat_length, timestamp):
+    kf.predict_EKF(timestamp)
 
     update_object(boat, kf, boat_length)
 
@@ -526,13 +536,13 @@ def update_object(obj: Vehicle, filter: KalmanFilterXY, boat_length = 0):
     obj.lon = filter.lon
     # obj.speed = np.sqrt((filter.x[3][0])**2 + (filter.x[4][0])**2)
     obj.speed = filter.x[3][0]
-    obj.heading = filter.x[2][0]
+    obj.heading = np.rad2deg(filter.x[2][0])
 
     obj.x = filter.x[0][0]
     obj.xdot = filter.x[3][0]
     obj.y = filter.x[1][0]
     obj.ydot = filter.x[4][0]
-    obj.psi = filter.x[2][0]
+    obj.psi = np.rad2deg(filter.x[2][0])
     obj.psidot = filter.x[5][0]
 
     # Calculate the deck position

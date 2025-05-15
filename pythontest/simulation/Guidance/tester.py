@@ -13,7 +13,7 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
-# csv_file = "pythontest/simulation/Guidance/data_short.csv"
+# csv_file = "simulation/Guidance/data_short.csv"
 # csv_file = "data_short_short.csv"
 csv_file = "data_short2.csv"
 # csv_file = "ssrs-josephine_1.csv"
@@ -87,7 +87,7 @@ while True:
         df.drop(index=df.index[0], inplace=True)
 
     # Predict the state forward
-    kf.predict(t, past_timestamp=t-dt)
+    kf.predict_EKF(t, past_timestamp=t-dt)
 
     u = kf.x[3][0]
     v = kf.x[4][0]
@@ -103,6 +103,8 @@ while True:
     yawrate.append(kf.x[5, 0])
     timestamps.append(t)
 
+    # print(f"t: {t}, lat: {kf.lat}, lon: {kf.lon}, u: {u}, v: {v}, heading: {np.rad2deg(kf.x[2, 0])}, yawrate: {kf.x[5, 0]}")
+
     if t > lastTime:
         break
     t += dt
@@ -114,6 +116,14 @@ filtered_lats, filtered_lons = zip(*[ned_to_latlon(x[0], x[1], lat0, lon0) for x
 # filtered_lons = lons
 
 # print (f"Filtered trajectory: {filtered_lats}, {filtered_lons}")
+
+
+# !----- Plotting -----!
+measuredHeadings = dfPlot["heading"]  # in degrees
+
+# Check if dfPlot is empty or contains only NaNs in lat/lon
+if dfPlot.empty or dfPlot["lat"].isnull().all() or dfPlot["lon"].isnull().all():
+    raise ValueError("dfPlot is empty or contains only NaNs in lat/lon.")
 
 
 # Use OpenStreetMap tile background
@@ -128,7 +138,9 @@ ax.set_extent([min([dfPlot["lon"].min(), min(filtered_lons)]), max([dfPlot["lon"
 ax.add_image(osm_tiles, 18)  # Higher zoom level = more detail
 
 # Plot raw AIS data
-ax.plot(dfPlot["lon"], dfPlot["lat"], 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
+ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["speed[m/s]"].to_numpy(), label="Measured Velocity", color="red", alpha=0.6)
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), measuredHeadings.to_numpy(), label="Measured Heading", color="red", alpha=0.6)
 
 
 # Plot Kalman Filtered trajectory
@@ -147,7 +159,7 @@ Plot filtered trajectory
 """
 plt.figure(figsize=(10, 4))
 plt.plot(timestamps, velocity, label="Filtered Velocity", color="blue")
-plt.plot(dfPlot["timestamp_unix"], dfPlot["speed[m/s]"], label="Measured Velocity", color="red", alpha=0.6)
+# plt.plot(dfPlot["timestamp_unix"], dfPlot["speed[m/s]"], label="Measured Velocity", color="red", alpha=0.6)
 plt.plot(timestamps, u_vel, label="Filtered u velocity", color="green", alpha=0.6)
 plt.plot(timestamps, v_vel, label="Filtered v velocity", color="orange", alpha=0.6)
 plt.xlabel("Time [s]")
@@ -164,11 +176,9 @@ plt.show()
 Plot filtered heading
 """
 
-measuredHeadings = dfPlot["heading"]  # in degrees
-
 plt.figure(figsize=(10, 4))
 plt.plot(timestamps, heading, label="Filtered Heading", color="blue")
-plt.plot(dfPlot["timestamp_unix"], measuredHeadings, label="Measured Heading", color="red", alpha=0.6)
+# plt.plot(dfPlot["timestamp_unix"], measuredHeadings, label="Measured Heading", color="red", alpha=0.6)
 plt.xlabel("Time [s]")
 plt.ylabel("Heading [deg]")
 plt.title("Heading: Measured vs Kalman Filtered")
