@@ -19,6 +19,7 @@ while True:
         Gr = rc.get_latest_stream_message("needed_glide_ratio")[1]
         if Gr > 0.25: 
             rc.add_stream_message(stage_stream, "diversion") 
+            print("Diverting landing due to glide ratio")
 
     if wanted_stage == "follow":
         # Read P1 dist, drone dist, boat speed and figure out if diversion is needed
