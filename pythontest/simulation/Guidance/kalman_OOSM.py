@@ -2,8 +2,8 @@ import numpy as np
 import time
 from collections import deque
 import bisect
-# from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
-from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+# from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 
 verbose = False
 
