@@ -300,9 +300,6 @@ class KalmanFilterXY:
         # Get the reference point in global xy
         x, y = latlon_to_ned(measurement_point_lat, measurement_point_lon, self.init_lat, self.init_lon)
 
-        # TODO: these cos sin are probably not correct anymore
-        # PROBABLY GOOD NOW I THINK
-
         # Convert local offset to global NED coordinates
         # For North=0°, East=90° convention:
         dx_global = delta_x * np.cos(measurement_point_heading) - delta_y * np.sin(measurement_point_heading)
