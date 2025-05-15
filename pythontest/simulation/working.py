@@ -8,6 +8,7 @@ import WP_calculation as wp
 
 from Drone import Drone
 from Boat import Boat
+from Vehicle import Vehicle
 import fluctuations as fl
 from Guidance.kalman_OOSM import KalmanFilterXY
 
@@ -474,7 +475,7 @@ def tester():
         boat.flush_messages()
         drone.flush_messages()
 
-def innit_filter(boat, boat_length):
+def innit_filter(boat: Boat, boat_length):
     # Get initial position of boat
     boat.update_possition_mavlink()
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
@@ -490,12 +491,12 @@ def innit_filter(boat, boat_length):
 
     return kf
 
-def update_without_kf(boat, boat_length):
+def update_without_kf(boat: Boat, boat_length):
     boat.update_possition_mavlink()
     boat.deck_lat, boat.deck_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, boat.heading-180, boat_length)
 
 
-def update_boat_position(kf, boat, boat_length, timestamp):
+def update_boat_position(kf: KalmanFilterXY, boat: Boat, boat_length, timestamp):
     boat.update_possition_mavlink()
 
     # v = boat.speed * np.cos(np.deg2rad(boat.heading))
@@ -519,7 +520,7 @@ def predict_kf(kf, boat, boat_length, timestamp):
     update_object(boat, kf, boat_length)
 
     
-def update_object(obj, filter, boat_length = 0):
+def update_object(obj: Vehicle, filter: K, boat_length = 0):
     # Update the object's position using the Kalman filter
     obj.lat = filter.lat
     obj.lon = filter.lon
@@ -538,7 +539,7 @@ def update_object(obj, filter, boat_length = 0):
     obj.deck_lat, obj.deck_lon = wp.calc_look_ahead_point(obj.lat, obj.lon, obj.heading-180, boat_length)
 
 
-def start_vehicles_simulation(drone, boat, base_throttle):
+def start_vehicles_simulation(drone: Drone, boat: Boat, base_throttle):
     # Parameter settings
     drone.set_parameter("TECS_SPDWEIGHT", 0.0) # Default: -1
     drone.set_parameter("TECS_TIME_CONST", 3.0) # Default: 5.0
