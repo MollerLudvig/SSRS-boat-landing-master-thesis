@@ -22,9 +22,9 @@ plotLocalPosition = False
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
 
-enableDroneVelocityWindow = False
-enableBoatVelocityWindow = False
-enableRelativeVelocityWindow = False
+enableDroneVelocityWindow = True
+enableBoatVelocityWindow = True
+enableRelativeVelocityWindow = True
 
 enableWindWindow = False
 
@@ -80,19 +80,19 @@ if enablePositionWindow:
     figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
-    figDroneAtt, axsDroneAtt = plt.subplots(3, 1, figsize=(10, 8), num="Drone Attitude")
+    figDroneAtt, axsDroneAtt = plt.subplots(3, 1, figsize=(10, 8), num="Drone Attitude", constrained_layout=True)
     figDroneAtt.suptitle(f"Drone Attitude & Sensor Data", fontsize=14)
 
 if enableBoatAttitudeWindow:
-    figBoatAtt, axsBoatAtt = plt.subplots(3, 1, figsize=(10, 8), num="Boat Attitude")
+    figBoatAtt, axsBoatAtt = plt.subplots(3, 1, figsize=(10, 8), num="Boat Attitude", constrained_layout=True)
     figBoatAtt.suptitle(f"Boat Attitude & Sensor Data", fontsize=14)
 
 if enableDroneVelocityWindow:
-    figDroneVel, axsDroneVel = plt.subplots(3, 1, figsize=(10, 8), num="Drone Velocity")
+    figDroneVel, axsDroneVel = plt.subplots(3, 1, figsize=(10, 8), num="Drone Velocity", constrained_layout=True)
     figDroneVel.suptitle(f"Drone Velocity Components", fontsize=14)
 
 if enableBoatVelocityWindow:
-    figBoatVel, axsBoatVel = plt.subplots(3, 1, figsize=(10, 8), num="Boat Velocity")
+    figBoatVel, axsBoatVel = plt.subplots(3, 1, figsize=(10, 8), num="Boat Velocity", constrained_layout=True)
     figBoatVel.suptitle(f"Boat Velocity Components", fontsize=14)
 
 if enableRelativeVelocityWindow:
@@ -100,15 +100,15 @@ if enableRelativeVelocityWindow:
     figRelVel.suptitle(f"Drone-Boat Relative Velocity", fontsize=14)
 
 if enableWindWindow:
-    figWind, axsWind = plt.subplots(2, 1, figsize=(8, 8), num="Wind Data")
+    figWind, axsWind = plt.subplots(2, 1, figsize=(8, 8), num="Wind Data", constrained_layout=True)
     figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
 if enableCollisionWindow:
-    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection")
+    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection", constrained_layout=True)
     figCollision.suptitle(f"Collision Detection", fontsize=14)
 
 if enableDistToP:
-    figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3")
+    figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
     figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
 
@@ -389,41 +389,43 @@ def update_plot(_):
     if enableDroneVelocityWindow and len(axsDroneVel) == 3:
         # X velocity
         axsDroneVel[0].clear()
-        if droneData.simulation.vn:
-            axsDroneVel[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vn[-displayed_indices:], 
-                               label='North Velocity (SIM)', color='red')
-        elif droneData.position.vx:
+        # if droneData.simulation.vn:
+        #     axsDroneVel[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vn[-displayed_indices:], 
+        #                        label='North Velocity (SIM)', color='red')
+        if droneData.position.vx:
             axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], droneData.position.vx[-displayed_indices:], 
-                               label='X Velocity', color='red', alpha=0.7)
+                               label='X Velocity', color='red', alpha=1)
         axsDroneVel[0].set_ylabel("m/s")
-        axsDroneVel[0].set_title("North/X Velocity")
+        axsDroneVel[0].set_title("X Velocity Drone local frame")
+        axsDroneVel[0].set_xlabel("Time (s)")
         axsDroneVel[0].legend()
         axsDroneVel[0].grid(True)
         
         # Y velocity
         axsDroneVel[1].clear()
-        if droneData.simulation.ve:
-            axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
-                               label='East Velocity (SIM)', color='green')
-        elif droneData.position.vy:
+        # if droneData.simulation.ve:
+        #     axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
+        #                        label='East Velocity (SIM)', color='green')
+        if droneData.position.vy:
             axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], droneData.position.vy[-displayed_indices:], 
-                               label='Y Velocity', color='green', alpha=0.7)
+                               label='Y Velocity', color='green', alpha=1)
         axsDroneVel[1].set_ylabel("m/s")
-        axsDroneVel[1].set_title("East/Y Velocity")
+        axsDroneVel[1].set_title("Y Velocity Drone local frame")
+        axsDroneVel[1].set_xlabel("Time (s)")
         axsDroneVel[1].legend()
         axsDroneVel[1].grid(True)
         
         # Z velocity
         axsDroneVel[2].clear()
-        if droneData.simulation.vd:
-            axsDroneVel[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vd[-displayed_indices:], 
-                               label='Down Velocity (SIM)', color='blue')
-        elif droneData.position.vz:
+        # if droneData.simulation.vd:
+        #     axsDroneVel[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vd[-displayed_indices:], 
+        #                        label='Down Velocity (SIM)', color='blue')
+        if droneData.position.vz:
             axsDroneVel[2].plot(droneData.position.time[-displayed_indices:], droneData.position.vz[-displayed_indices:], 
-                               label='Z Velocity', color='blue', alpha=0.7)
+                               label='Z Velocity', color='blue', alpha=1)
         axsDroneVel[2].set_ylabel("m/s")
         axsDroneVel[2].set_xlabel("Time (s)")
-        axsDroneVel[2].set_title("Down/Z Velocity")
+        axsDroneVel[2].set_title("Z Velocity Drone local frame")
         axsDroneVel[2].legend()
         axsDroneVel[2].grid(True)
     
@@ -431,41 +433,43 @@ def update_plot(_):
     if enableBoatVelocityWindow and len(axsBoatVel) == 3:
         # X velocity
         axsBoatVel[0].clear()
-        if boatData.simulation.vn:
-            axsBoatVel[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vn[-displayed_indices:], 
-                              label='North Velocity (SIM)', color='red')
-        elif boatData.position.vx:
+        # if boatData.simulation.vn:
+        #     axsBoatVel[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vn[-displayed_indices:], 
+        #                       label='North Velocity (SIM)', color='red')
+        if boatData.position.vx:
             axsBoatVel[0].plot(boatData.position.time[-displayed_indices:], boatData.position.vx[-displayed_indices:], 
-                              label='X Velocity', color='red', alpha=0.7)
+                              label='X Velocity', color='red', alpha=1)
         axsBoatVel[0].set_ylabel("m/s")
-        axsBoatVel[0].set_title("North/X Velocity")
+        axsBoatVel[0].set_title("X Velocity Boat local frame")
+        axsBoatVel[0].set_xlabel("Time (s)")
         axsBoatVel[0].legend()
         axsBoatVel[0].grid(True)
         
         # Y velocity
         axsBoatVel[1].clear()
-        if boatData.simulation.ve:
-            axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
-                              label='East Velocity (SIM)', color='green')
-        elif boatData.position.vy:
+        # if boatData.simulation.ve:
+        #     axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
+        #                       label='East Velocity (SIM)', color='green')
+        if boatData.position.vy:
             axsBoatVel[1].plot(boatData.position.time[-displayed_indices:], boatData.position.vy[-displayed_indices:], 
                               label='Y Velocity', color='green', alpha=0.7)
         axsBoatVel[1].set_ylabel("m/s")
-        axsBoatVel[1].set_title("East/Y Velocity")
+        axsBoatVel[1].set_title("Y Velocity Boat local frame")
+        axsBoatVel[1].set_xlabel("Time (s)")
         axsBoatVel[1].legend()
         axsBoatVel[1].grid(True)
         
         # Z velocity
         axsBoatVel[2].clear()
-        if boatData.simulation.vd:
-            axsBoatVel[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vd[-displayed_indices:], 
-                              label='Down Velocity (SIM)', color='blue')
-        elif boatData.position.vz:
+        # if boatData.simulation.vd:
+        #     axsBoatVel[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vd[-displayed_indices:], 
+        #                       label='Down Velocity (SIM)', color='blue')
+        if boatData.position.vz:
             axsBoatVel[2].plot(boatData.position.time[-displayed_indices:], boatData.position.vz[-displayed_indices:], 
                               label='Z Velocity', color='blue', alpha=0.7)
         axsBoatVel[2].set_ylabel("m/s")
         axsBoatVel[2].set_xlabel("Time (s)")
-        axsBoatVel[2].set_title("Down/Z Velocity")
+        axsBoatVel[2].set_title("Z Velocity Boat local frame")
         axsBoatVel[2].legend()
         axsBoatVel[2].grid(True)
     
@@ -494,7 +498,7 @@ def update_plot(_):
         #         time_history.append(droneData.simulation.time[i])
         # If no simulation data, try position data
         if droneData.gps.time and boatData.gps.time:
-            for i in range(min(len(droneData.position.time), len(boatData.position.time))):
+            for i in range(min(len(droneData.gps.time), len(boatData.gps.time))):
                 vx_rel = droneData.gps.vx[i] - boatData.gps.vx[i]
                 vy_rel = droneData.gps.vy[i] - boatData.gps.vy[i]
                 vz_rel = droneData.gps.vz[i] - boatData.gps.vz[i]
@@ -513,7 +517,7 @@ def update_plot(_):
         if time_history:
             # North relative velocity
             axsRelVel[0].clear()
-            axsRelVel[0].plot(time_history[-displayed_indices:], rel_vn_history[-displayed_indices:], label='North V', color='red')
+            axsRelVel[0].plot(time_history[-displayed_indices:], rel_vn_history[-displayed_indices:], label='North Velocity', color='red')
             axsRelVel[0].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
             axsRelVel[0].set_title("North Relative Velocity (Drone-Boat)")
@@ -522,19 +526,19 @@ def update_plot(_):
             
             # East relative velocity
             axsRelVel[1].clear()
-            axsRelVel[1].plot(time_history[-displayed_indices:], rel_ve_history[-displayed_indices:], label='East V', color='green')
+            axsRelVel[1].plot(time_history[-displayed_indices:], rel_ve_history[-displayed_indices:], label='East Velocity', color='green')
             axsRelVel[1].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
-            axsRelVel[1].set_title("North Relative Velocity (Drone-Boat)")
+            axsRelVel[1].set_title("East Relative Velocity (Drone-Boat)")
             axsRelVel[1].legend()
             axsRelVel[1].grid(True)
             
             # Down relative velocity
             axsRelVel[2].clear()
-            axsRelVel[2].plot(time_history[-displayed_indices:], rel_vd_history[-displayed_indices:], label='Z V', color='blue')
+            axsRelVel[2].plot(time_history[-displayed_indices:], rel_vd_history[-displayed_indices:], label='Down Velocity', color='blue')
             axsRelVel[2].set_ylabel("m/s")
             axsRelVel[3].set_xlabel("Time (s)")
-            axsRelVel[2].set_title("Z Relative Velocity (Drone-Boat)")
+            axsRelVel[2].set_title("Down Relative Velocity (Drone-Boat)")
             axsRelVel[2].legend()
             axsRelVel[2].grid(True)
             
