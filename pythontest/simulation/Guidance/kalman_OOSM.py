@@ -2,15 +2,17 @@ import numpy as np
 import time
 from collections import deque
 import bisect
-from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
-# from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+# from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 
 verbose = False
 
 class KalmanFilterXY:
     def __init__(self, u = 0, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
-        self.x = np.array([[0], [0], [heading], [u], [v], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r)]
+        heading_rad = np.deg2rad(heading)
+
+        self.x = np.array([[0], [0], [heading_rad], [u], [v], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r)]
         self.init_lat = init_lat
         self.init_lon = init_lon
         self.lat = None
@@ -94,11 +96,11 @@ class KalmanFilterXY:
             print("\n")
 
         # Update the state transition matrix F
-        thetaRad = np.deg2rad(self.x[2, 0])
+        psi = self.x[2, 0]
 
         self.F = np.array([
-            [1, 0, 0, np.cos(thetaRad) * dt, -np.sin(thetaRad) * dt, 0],
-            [0, 1, 0, np.sin(thetaRad) * dt, np.cos(thetaRad) * dt, 0],
+            [1, 0, 0, np.cos(psi) * dt, -np.sin(psi) * dt, 0],
+            [0, 1, 0, np.sin(psi) * dt, np.cos(psi) * dt, 0],
             [0, 0, 1, 0, 0, dt],
             [0, 0, 0, 1, 0, 0],
             [0, 0, 0, 0, 1, 0],
@@ -146,11 +148,11 @@ class KalmanFilterXY:
 
     def update(self, z, H, R, timestamp):
         """Update the filter with a new measurement at a given timestamp."""
-        if timestamp < self.last_time:  # Out-of-sequence measurement detected
+        if timestamp > self.last_time:
+            self.predict_EKF(timestamp)
+        elif timestamp < self.last_time:    # Out of sequence measurement
             self._handle_OOSM(z, H, R, timestamp)
             return
-        else:
-            self.last_time = timestamp
 
         y = z - H @ self.x  # Innovation
         y[2][0] = self.wrap_angle_deg(y[2][0]) # Wrap angle to [-180, 180]
@@ -211,11 +213,10 @@ class KalmanFilterXY:
     def transition_function(self, x, dt):
         """Applies nonlinear motion model based on current state."""
         x_pos, y_pos, psi, u, v, r = x.flatten()
-        psi_rad = np.deg2rad(psi)
 
         dx = np.array([
-            [x_pos + (u * np.cos(psi_rad) - v * np.sin(psi_rad)) * dt],
-            [y_pos + (u * np.sin(psi_rad) + v * np.cos(psi_rad)) * dt],
+            [x_pos + (u * np.cos(psi) - v * np.sin(psi)) * dt],
+            [y_pos + (u * np.sin(psi) + v * np.cos(psi)) * dt],
             [psi + r * dt],
             [u],
             [v],
@@ -231,16 +232,15 @@ class KalmanFilterXY:
     def compute_jacobian(self, x, dt):
         """Computes Jacobian of the transition function wrt state."""
         _, _, psi, u, v, _ = x.flatten()
-        psi_rad = np.deg2rad(psi)
 
         F = np.eye(6)
-        F[0, 2] = (-u * np.sin(psi_rad) - v * np.cos(psi_rad)) * dt
-        F[0, 3] =  np.cos(psi_rad) * dt
-        F[0, 4] = -np.sin(psi_rad) * dt
+        F[0, 2] = (-u * np.sin(psi) - v * np.cos(psi)) * dt
+        F[0, 3] =  np.cos(psi) * dt
+        F[0, 4] = -np.sin(psi) * dt
 
-        F[1, 2] = ( u * np.cos(psi_rad) - v * np.sin(psi_rad)) * dt
-        F[1, 3] =  np.sin(psi_rad) * dt
-        F[1, 4] =  np.cos(psi_rad) * dt
+        F[1, 2] = ( u * np.cos(psi) - v * np.sin(psi)) * dt
+        F[1, 3] =  np.sin(psi) * dt
+        F[1, 4] =  np.cos(psi) * dt
 
         F[2, 5] = dt  # yaw += r * dt
 
@@ -310,11 +310,10 @@ class KalmanFilterXY:
         # PROBABLY GOOD NOW I THINK
 
         # Convert local offset to global coordinates (keep in mind compass heading)
-        heading_rad = np.deg2rad(measurement_point_heading)
-        # dx_global = delta_x * np.cos(heading_rad) + delta_y * np.sin(heading_rad)
-        # dy_global = - delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
-        dx_global = delta_x * np.cos(heading_rad) - delta_y * np.sin(heading_rad)
-        dy_global = delta_x * np.sin(heading_rad) + delta_y * np.cos(heading_rad)
+        # dx_global = delta_x * np.cos(measurement_point_heading) + delta_y * np.sin(measurement_point_heading)
+        # dy_global = - delta_x * np.sin(measurement_point_heading) + delta_y * np.cos(measurement_point_heading)
+        dx_global = delta_x * np.cos(measurement_point_heading) - delta_y * np.sin(measurement_point_heading)
+        dy_global = delta_x * np.sin(measurement_point_heading) + delta_y * np.cos(measurement_point_heading)
 
         # Apply offset
         global_x = x + dx_global
@@ -328,8 +327,10 @@ class KalmanFilterXY:
         if R_camera is None:
             R_camera = np.eye(2) * 0.01
 
+        drone_heading_rad = np.deg2rad(drone_heading)
+
         # Convert from an offset measurement to a global xy position
-        z[0][0], z[1][0] = self._local_to_global(z[0][0], z[1][0], drone_lat, drone_lon, drone_heading)
+        z[0][0], z[1][0] = self._local_to_global(z[0][0], z[1][0], drone_lat, drone_lon, drone_heading_rad)
         
         # Add the measurement to the buffer and update the filter
         self._insert_measurement(z, self.H_camera, R_camera, timestamp)
@@ -349,6 +350,9 @@ class KalmanFilterXY:
             #                   [0, 0, 10, 0],
             #                   [0, 0, 0, 1]]) * 0.001
 
+        # Convert heading to radians
+        z[2][0] = np.deg2rad(z[2][0])
+
         self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
@@ -364,6 +368,6 @@ class KalmanFilterXY:
         self.update_AIS(z,timestamp, R_AIS)
 
 
-    def wrap_angle_deg(self, angle):
-        return (angle + 180) % 360 - 180
+    def wrap_angle_rad(self, angle):
+        return (angle + np.pi) % (2*np.pi) - np.pi
 
