@@ -146,37 +146,46 @@ class KalmanFilterXY:
         # Update last time
         self.last_time = timestamp
 
+
+
     def update(self, z, H, R, timestamp):
-        """Update the filter with a new measurement at a given timestamp."""
-        if timestamp > self.last_time:
-            self.predict_EKF(timestamp)
-        elif timestamp < self.last_time:    # Out of sequence measurement
+        """
+        Update the filter with a new measurement at a given timestamp.
+        Handles regular updates and delegates OOSM processing when needed.
+        """
+        # First, store the measurement in the buffer
+        self._insert_measurement(z, H, R, timestamp)
+        
+        # If the measurement is at the current time or in the future, do a regular update
+        if timestamp >= self.last_time:
+            # Predict to the measurement time if needed
+            if timestamp > self.last_time:
+                self.predict_EKF(timestamp)
+            
+            # Calculate innovation
+            y = z - H @ self.x
+            
+            # Handle angle wrapping if needed
+            if y.shape[0] > 2 and H.shape[0] > 2:
+                y[2][0] = self.wrap_angle_rad(y[2][0])
+            
+            # Standard Kalman filter update
+            S = H @ (self.P @ H.T) + R  # Innovation covariance
+            K = self.P @ H.T @ np.linalg.inv(S)  # Kalman Gain
+            self.x = self.x + K @ y # Update state
+            I = np.eye(self.n) # Identity matrix
+            self.P = (I - K @ H) @ self.P @ (I - K @ H).T + K @ R @ K.T  # Joseph form
+
+
+            # Update lat/lon
+            self.lat, self.lon = ned_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
+            
+            # Update the state buffer
+            self.state_buffer.append((timestamp, self.x.copy(), self.P.copy()))
+            self.last_time = timestamp
+        else:
+            # Handle out-of-sequence measurement
             self._handle_OOSM(z, H, R, timestamp)
-            return
-
-        y = z - H @ self.x  # Innovation
-        y[2][0] = self.wrap_angle_deg(y[2][0]) # Wrap angle to [-180, 180]
-
-        S = H @ (self.P @ H.T) + R  # Innovation covariance
-        K = self.P @ H.T @ np.linalg.inv(S)  # Kalman Gain
-        self.x = self.x + K @ y # Update state
-        I = np.eye(self.n) # Identity matrix
-        self.P = (I - K @ H) @ self.P @ (I - K @ H).T + K @ R @ K.T  # Joseph form
-
-        # Set lat lon
-        self.lat, self.lon = ned_to_latlon(self.x[0][0], self.x[1][0], self.init_lat, self.init_lon)
-
-        if verbose:
-            try:
-                print("\n")
-                print("Update step:")
-                # print(f"z: {z}, x: {self.x}, P: {self.P}")
-                print(f"z_x: {z[0][0]}, z_y: {z[1][0]}, z_psi: {z[2][0]}, z_u: {z[3][0]}, z_v: {z[4][0]}")
-                print(f"x_x: {self.x[0][0]}, x_y: {self.x[1][0]}, x_psi: {self.x[2][0]}, x_u: {self.x[3][0]}, x_v: {self.x[4][0]}")
-                print(f"lat: {self.lat}, lon: {self.lon}")
-                print("\n")
-            except Exception as e:
-                print(f"Error in printing update step: {e}")
 
 
 
@@ -223,7 +232,7 @@ class KalmanFilterXY:
             [r]
         ])
         # Wrap angles to [-pi, pi]
-        dx[2][0] = self.wrap_angle_deg(dx[2][0])
+        dx[2][0] = self.wrap_angle_rad(dx[2][0])
 
         return dx
 
@@ -250,52 +259,111 @@ class KalmanFilterXY:
         Handles out-of-sequence measurements by rolling back the state,
         applying the correction, and re-propagating to the current time.
         """
-        # Step 1: Find the latest state before `timestamp`
+        # Store the current time as we'll need to propagate back to it
+        current_time = self.last_time
+        
+        # Step 1: Find the latest state before the OOSM timestamp
         past_state = None
+        past_time = None
         for t, x, P in reversed(self.state_buffer):
             if t <= timestamp:
                 past_state = (t, x.copy(), P.copy())
+                past_time = t
                 break
 
-        # If no past state is found, use the oldest available state
+        # If no valid past state found, use the oldest available state with a warning
         if past_state is None:
-            print("Warning: No valid past state found for OOSM! Using the oldest available state.")
             if len(self.state_buffer) > 0:
-                past_state = self.state_buffer[0]  # Use oldest state
+                print("Warning: No state found before OOSM timestamp. Using oldest state.")
+                past_state = self.state_buffer[0]
+                past_time = past_state[0]
             else:
                 print("Error: No states available in buffer. Ignoring OOSM.")
                 return
 
-        # Roll back to past state
-        t_past, self.x, self.P = past_state
+        # Step 2: Insert the new measurement into the buffer to maintain chronological order
+        self._insert_measurement(z, H, R, timestamp)
 
+        # Step 3: Rollback to the past state
+        self.x = past_state[1]
+        self.P = past_state[2]
+        self.last_time = past_time
 
-        # Step 2: Collect all later measurements (including the new OOSM)
-        relevant_measurements = []
-        for t, mz, mH, mR in reversed(self.measurement_buffer):
-            if t < timestamp:
-                break
-            relevant_measurements.append((t, mz.copy(), mH.copy(), mR.copy()))
-        relevant_measurements.append((timestamp, z.copy(), H.copy(), R.copy()))
+        # Step 4: Collect all measurements from past_time to current_time in chronological order
+        future_measurements = []
+        for item in self.measurement_buffer:
+            t, mz, mH, mR = item
+            if past_time < t <= current_time:
+                future_measurements.append(item)
 
+        # Ensure measurements are sorted by timestamp
+        future_measurements.sort(key=lambda x: x[0])
 
-        # Step 3: Apply measurements in chronological order
-        for t, mz, mH, mR in reversed(relevant_measurements):
-            self.predict_EKF(t, t_past)
+        # Step 5: Process all measurements sequentially
+        last_processed_time = past_time
+        
+        for t, mz, mH, mR in future_measurements:
+            # Predict to the measurement time
+            if t > last_processed_time:
+                self.predict_EKF(t, last_processed_time)
+
+            # Update with the measurement
             self.update(mz, mH, mR, t)
-            t_past = t
 
-        # Step 4: Predict to the current time
-        self.predict_EKF(self.last_time, t_past)
+        # Update the state buffer with this reprocessed state
+        self.state_buffer.append((t, self.x.copy(), self.P.copy()))
+        last_processed_time = t
+
+
+        # Step 6: If current_time is ahead of last measurement time, predict to current_time
+        if current_time > last_processed_time:
+            self.predict_EKF(current_time, last_processed_time)
+
+
+        # Step 7: Clean up state buffer to maintain chronological order
+        # This removes any states that were added out-of-sequence during reprocessing
+        temp_list = list(self.state_buffer)
+        temp_list.sort(key=lambda x: x[0])
+        self.state_buffer = deque(temp_list, maxlen=self.state_buffer.maxlen)
+        
+        # Step 8: Update the last time
+        self.last_time = current_time
+
+
+
 
     def _insert_measurement(self, z, H, R, timestamp):
-        """Insert measurement into buffer while maintaining chronological order."""
+        """
+        Insert measurement into buffer while maintaining chronological order.
+        Returns True if the measurement was added, False if it was too old.
+        """
+        # Check if the measurement is too old (older than our oldest state)
+        if self.state_buffer and timestamp < self.state_buffer[0][0]:
+            print(f"Warning: Measurement at {timestamp} is older than oldest state " +
+                f"({self.state_buffer[0][0]}). Discarding.")
+            return False
+        
+        # Create new measurement entry
         new_entry = (timestamp, z.copy(), H.copy(), R.copy())
-
-        # Convert deque to list, insert in sorted order, and convert back to deque
+        
+        # Insert into buffer maintaining chronological order
+        # Convert deque to list for easier manipulation
         temp_list = list(self.measurement_buffer)
-        bisect.insort(temp_list, new_entry, key=lambda x: x[0])
+        
+        # Find insertion point
+        insert_idx = 0
+        for i, (t, _, _, _) in enumerate(temp_list):
+            if t > timestamp:
+                insert_idx = i
+                break
+            insert_idx = i + 1
+        
+        # Insert the measurement
+        temp_list.insert(insert_idx, new_entry)
+        
+        # Convert back to deque with limited length
         self.measurement_buffer = deque(temp_list, maxlen=self.measurement_buffer.maxlen)
+        return True
 
     def _local_to_global(self, delta_x, delta_y, measurement_point_lat, measurement_point_lon, measurement_point_heading):
         """Convert local offset (delta_x, delta_y) to a global lat/lon position,
@@ -330,8 +398,7 @@ class KalmanFilterXY:
         # Convert from an offset measurement to a global xy position
         z[0][0], z[1][0] = self._local_to_global(z[0][0], z[1][0], drone_lat, drone_lon, drone_heading_rad)
         
-        # Add the measurement to the buffer and update the filter
-        self._insert_measurement(z, self.H_camera, R_camera, timestamp)
+        # Update filter
         self.update(z, self.H_camera, R_camera, timestamp)
 
     def update_AIS(self, z, timestamp, R_AIS=None):
@@ -351,7 +418,6 @@ class KalmanFilterXY:
         # Convert heading to radians
         z[2][0] = np.deg2rad(z[2][0])
 
-        self._insert_measurement(z, self.H_AIS, R_AIS, timestamp)
         self.update(z, self.H_AIS, R_AIS, timestamp)
 
     def update_w_latlon(self, z, timestamp, R_AIS=None):
