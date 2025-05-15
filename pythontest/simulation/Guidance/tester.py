@@ -16,6 +16,7 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 # csv_file = "simulation/Guidance/data_short.csv"
 # csv_file = "data_short_short.csv"
 csv_file = "data_short2.csv"
+# csv_file = "data_short_OOSM.csv"
 # csv_file = "ssrs-josephine_1.csv"
 
 df = pd.read_csv(csv_file)
@@ -60,6 +61,8 @@ heading = []
 velocity_heading = []
 yawrate = []
 timestamps = []
+delta_time = []
+
 while True:
     # Update with all AIS measurements up to current time t
     while not df.empty and t >= df.iloc[0]["timestamp_unix"]:
@@ -82,16 +85,18 @@ while True:
             [v]
         ])
 
-        kf.update_w_latlon(z , df.iloc[0]["timestamp_unix"])
+        measurment_time = df.iloc[0]["timestamp_unix"]
+        kf.update_w_latlon(z, measurment_time)
 
         df.drop(index=df.index[0], inplace=True)
 
     # Predict the state forward
-    kf.predict_EKF(t, past_timestamp=t-dt)
+    kf.predict_EKF(t)
 
     u = kf.x[3][0]
     v = kf.x[4][0]
 
+    delta_time.append(t - measurment_time)
     trajectory.append((kf.x[0], kf.x[1]))
     lats.append(kf.lat)
     lons.append(kf.lon)
@@ -119,39 +124,52 @@ filtered_lats, filtered_lons = zip(*[ned_to_latlon(x[0], x[1], lat0, lon0) for x
 
 
 # !----- Plotting -----!
-measuredHeadings = dfPlot["heading"]  # in degrees
+# measuredHeadings = dfPlot["heading"]  # in degrees
 
-# Check if dfPlot is empty or contains only NaNs in lat/lon
-if dfPlot.empty or dfPlot["lat"].isnull().all() or dfPlot["lon"].isnull().all():
-    raise ValueError("dfPlot is empty or contains only NaNs in lat/lon.")
-
-
-# Use OpenStreetMap tile background
-osm_tiles = OSM()
-fig, ax = plt.subplots(figsize=(10, 6), subplot_kw={"projection": osm_tiles.crs})
-
-# Set map extent
-ax.set_extent([min([dfPlot["lon"].min(), min(filtered_lons)]), max([dfPlot["lon"].max(), max(filtered_lons)]),
-                min([dfPlot["lat"].min(), min(filtered_lats)]), max([dfPlot["lat"].max(), max(filtered_lats)])], crs=ccrs.PlateCarree())
-
-# Add OSM tiles (detailed coastline & islands)
-ax.add_image(osm_tiles, 18)  # Higher zoom level = more detail
-
-# Plot raw AIS data
-ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
-plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["speed[m/s]"].to_numpy(), label="Measured Velocity", color="red", alpha=0.6)
-plt.plot(dfPlot["timestamp_unix"].to_numpy(), measuredHeadings.to_numpy(), label="Measured Heading", color="red", alpha=0.6)
+# # Check if dfPlot is empty or contains only NaNs in lat/lon
+# if dfPlot.empty or dfPlot["lat"].isnull().all() or dfPlot["lon"].isnull().all():
+#     raise ValueError("dfPlot is empty or contains only NaNs in lat/lon.")
 
 
-# Plot Kalman Filtered trajectory
-ax.plot(filtered_lons, filtered_lats, 'bo-', markersize=3, transform=ccrs.PlateCarree(), label="Kalman Filtered Path")
+# # Use OpenStreetMap tile background
+# osm_tiles = OSM()
+# fig, ax = plt.subplots(figsize=(10, 6), subplot_kw={"projection": osm_tiles.crs})
 
-plt.legend()
-plt.title("AIS Ship Trajectory with OSM Map Background")
-plt.grid()
-plt.show()
+# # Set map extent
+# ax.set_extent([min([dfPlot["lon"].min(), min(filtered_lons)]), max([dfPlot["lon"].max(), max(filtered_lons)]),
+#                 min([dfPlot["lat"].min(), min(filtered_lats)]), max([dfPlot["lat"].max(), max(filtered_lats)])], crs=ccrs.PlateCarree())
+
+# # Add OSM tiles (detailed coastline & islands)
+# ax.add_image(osm_tiles, 10)  # Higher zoom level = more detail
+
+# # Plot raw AIS data
+# ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro-', markersize=3, transform=ccrs.PlateCarree(), label="Raw AIS Data")
+# plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["speed[m/s]"].to_numpy(), label="Measured Velocity", color="red", alpha=0.6)
+# plt.plot(dfPlot["timestamp_unix"].to_numpy(), measuredHeadings.to_numpy(), label="Measured Heading", color="red", alpha=0.6)
+
+
+# # Plot Kalman Filtered trajectory
+# ax.plot(filtered_lons, filtered_lats, 'bo-', markersize=3, transform=ccrs.PlateCarree(), label="Kalman Filtered Path")
+
+# plt.legend()
+# plt.title("AIS Ship Trajectory with OSM Map Background")
+# plt.grid()
+# plt.show()
 # plt.savefig("filtered_trajectory.png")  # Save the plot to file
 
+
+"""
+Plot latlons
+"""
+plt.figure(figsize=(10, 6))
+plt.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro-', markersize=3, label="Raw AIS Data")
+plt.plot(filtered_lons, filtered_lats, 'bo-', markersize=3, label="Kalman Filtered Path")
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
+plt.title("Kalman Filtered Path vs Raw AIS Data")
+plt.legend()
+plt.grid()
+plt.tight_layout()
 
 
 """
@@ -159,7 +177,7 @@ Plot filtered trajectory
 """
 plt.figure(figsize=(10, 4))
 plt.plot(timestamps, velocity, label="Filtered Velocity", color="blue")
-# plt.plot(dfPlot["timestamp_unix"], dfPlot["speed[m/s]"], label="Measured Velocity", color="red", alpha=0.6)
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["speed[m/s]"].to_numpy(), label="Measured Velocity", color="red", alpha=0.6)
 plt.plot(timestamps, u_vel, label="Filtered u velocity", color="green", alpha=0.6)
 plt.plot(timestamps, v_vel, label="Filtered v velocity", color="orange", alpha=0.6)
 plt.xlabel("Time [s]")
@@ -168,7 +186,7 @@ plt.title("Velocity: Measured vs Kalman Filtered")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+
 
 
 
@@ -178,15 +196,39 @@ Plot filtered heading
 
 plt.figure(figsize=(10, 4))
 plt.plot(timestamps, heading, label="Filtered Heading", color="blue")
-# plt.plot(dfPlot["timestamp_unix"], measuredHeadings, label="Measured Heading", color="red", alpha=0.6)
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["heading"].to_numpy(), label="Measured Heading", color="red", alpha=0.6)
 plt.xlabel("Time [s]")
 plt.ylabel("Heading [deg]")
 plt.title("Heading: Measured vs Kalman Filtered")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show()
 
+
+"""
+Plot timestams
+"""
+plt.figure(figsize=(10, 4))
+plt.plot(timestamps, label="Timestamps", color="blue")
+plt.xlabel("Time [s]")
+plt.ylabel("Timestamps [s]")
+plt.title("Timestamps")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+
+
+"""
+Plot delta time
+"""
+plt.figure(figsize=(10, 4))
+plt.plot(timestamps, delta_time, label="Delta Time", color="blue")
+plt.xlabel("Time [s]")
+plt.ylabel("Delta Time [s]")
+plt.title("Delta Time")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
 
 
 
