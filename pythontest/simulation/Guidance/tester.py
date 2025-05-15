@@ -195,7 +195,7 @@ Plot filtered heading
 """
 
 plt.figure(figsize=(10, 4))
-plt.plot(timestamps, heading, label="Filtered Heading", color="blue")
+plt.plot(timestamps, np.rad2deg(heading), label="Filtered Heading", color="blue")
 plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["heading"].to_numpy(), label="Measured Heading", color="red", alpha=0.6)
 plt.xlabel("Time [s]")
 plt.ylabel("Heading [deg]")

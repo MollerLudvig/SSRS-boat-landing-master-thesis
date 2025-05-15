@@ -8,11 +8,11 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 verbose = False
 
 class KalmanFilterXY:
-    def __init__(self, u = 0, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=0.001, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
+    def __init__(self, u = 0, v = 0, heading = 0, init_lat = None, init_lon = None, process_noise_variance=1, state_buffer_size=200, measurment_buffer_size=20, timestamp=time.time()):
 
         heading_rad = np.deg2rad(heading)
 
-        self.x = np.array([[0], [0], [heading_rad], [u], [v], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r)]
+        self.x = np.array([[0], [0], [heading_rad], [u], [v], [0], [0], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r), ax, ay]
         self.init_lat = init_lat
         self.init_lon = init_lon
         self.lat = None
@@ -26,20 +26,20 @@ class KalmanFilterXY:
         self.measurement_buffer = deque(maxlen=measurment_buffer_size)  # Stores measurements
 
         # Measurement matrices
-        self.H_camera = np.array([[1, 0, 0, 0, 0, 0], # x
-                                  [0, 1, 0, 0, 0, 0]]) # y
+        self.H_camera = np.array([[1, 0, 0, 0, 0, 0, 0, 0], # x
+                                  [0, 1, 0, 0, 0, 0, 0, 0]]) # y
         
-        self.H_AIS = np.array([[1, 0, 0, 0, 0, 0], # x
-                               [0, 1, 0, 0, 0, 0], # y
-                               [0, 0, 1, 0, 0, 0], # yaw
-                               [0, 0, 0, 1, 0, 0], # vx
-                               [0, 0, 0, 0, 1, 0] # vy
+        self.H_AIS = np.array([[1, 0, 0, 0, 0, 0, 0, 0], # x
+                               [0, 1, 0, 0, 0, 0, 0, 0], # y
+                               [0, 0, 1, 0, 0, 0, 0, 0], # yaw
+                               [0, 0, 0, 1, 0, 0, 0, 0], # vx
+                               [0, 0, 0, 0, 1, 0, 0, 0] # vy
                                ])
         
         # State transition matrix (updated in predict)
         self.F = np.eye(self.n)
 
-    def _create_Q(self, dt, sigmaA, sigmaAR):
+    def _create_Q_old(self, dt, sigmaA, sigmaAR, sigmaAAx, sigmaAAy):
         """
         6×6 process noise covariance Q for state
         
@@ -62,7 +62,7 @@ class KalmanFilterXY:
                                     [q12, q22]])
         
         # Assemble 6×6 block‑diagonal Q
-        Q = np.zeros((6, 6))
+        Q = np.zeros((self.n, self.n))
         
         # indices: x=0, y=1, psi=2, u=3, v=4, r=5
         # insert x–u block
@@ -73,6 +73,44 @@ class KalmanFilterXY:
         Q[np.ix_([2, 5], [2, 5])] = q_psi
     
         return Q
+    
+
+
+    def _create_Q(self, dt, sigmaA, sigmaAR, sigmaJ):
+        """
+        Create 8×8 process noise covariance matrix Q.
+
+        State: [x, y, psi, u, v, r, ax, ay]
+        - x, y: position
+        - psi: heading (yaw)
+        - u, v: velocity
+        - r: yaw rate
+        - ax, ay: linear accelerations (now state variables)
+        """
+        Q = np.zeros((8, 8))
+
+        # Process noise for x, y (via u, ax), and u, ax coupling
+        q_posVel = sigmaA**2 * np.array([
+            [(dt**4)/4, (dt**3)/2],
+            [(dt**3)/2, (dt**2)]
+        ])
+        # For both x/u and y/v
+        Q[np.ix_([0, 3], [0, 3])] = q_posVel
+        Q[np.ix_([1, 4], [1, 4])] = q_posVel
+
+        # Yaw + yaw rate
+        q_yaw = sigmaAR**2 * np.array([
+            [(dt**4)/4, (dt**3)/2],
+            [(dt**3)/2, (dt**2)]
+        ])
+        Q[np.ix_([2, 5], [2, 5])] = q_yaw
+
+        # Acceleration noise (modeled as random walk or constant jerk input)
+        Q[6, 6] = sigmaJ**2 * dt  # ax
+        Q[7, 7] = sigmaJ**2 * dt  # ay
+
+        return Q
+
 
 
     def update(self, z, H, R, timestamp):
@@ -133,12 +171,19 @@ class KalmanFilterXY:
         self.x = self.transition_function(self.x, dt)
 
         # Compute Jacobian F
-        F = self.compute_jacobian(self.x, dt)
+        F = self.compute_jacobian(dt)
 
         # Create process noise covariance Q
-        sigmaA = 0.2
-        sigmaAR = 0.02
-        Q = self._create_Q(dt, sigmaA, sigmaAR)
+        sigmaA = 0.2 # Acceleration influencing position
+        sigmaAR = 0.02 # Angular acceleration (rad/s²)
+        sigmaJ = 0.1     # Jerk magnitude (m/s³), if modeling ax/ay as slowly changing
+        Q = self._create_Q(dt, sigmaA, sigmaAR, sigmaJ)
+        # Q = self.compute_q()
+        # Q = np.eye(self.n) * self.process_noise_variance
+
+        # Ceck size of Q
+        if Q.shape != (self.n, self.n):
+            raise ValueError(f"Q matrix size mismatch: expected {self.n}x{self.n}, got {Q.shape[0]}x{Q.shape[1]}")
 
         # Predict covariance using linearized dynamics
         self.P = F @ self.P @ F.T + Q
@@ -157,36 +202,62 @@ class KalmanFilterXY:
 
     def transition_function(self, x, dt):
         """Applies nonlinear motion model based on current state."""
-        x_pos, y_pos, psi, u, v, r = x.flatten()
+        x_pos, y_pos, psi, u, v, r, u_acc, v_acc = x.flatten()
 
         dx = np.array([
-            [x_pos + (u * np.cos(psi) - v * np.sin(psi)) * dt],
-            [y_pos + (u * np.sin(psi) + v * np.cos(psi)) * dt],
+            [x_pos +
+             (u * np.cos(psi) - v * np.sin(psi)) * dt +
+             0.5 * (u_acc * np.cos(psi) - v_acc * np.sin(psi)) * dt**2
+             ],
+            [y_pos + 
+             (u * np.sin(psi) + v * np.cos(psi)) * dt**2 +
+             0.5 * (u_acc * np.sin(psi) + v_acc * np.cos(psi)) * dt**2
+             ],
             [psi + r * dt],
-            [u],
-            [v],
-            [r]
+            [u + u_acc * dt],
+            [v + v_acc * dt],
+            [r],
+            [u_acc],
+            [v_acc]
         ])
         # Wrap angles to [-pi, pi]
         dx[2][0] = self.wrap_angle_rad(dx[2][0])
 
         return dx
 
+    
+    def compute_jacobian(self, dt):
+        _, _, yaw, u, v, r, ax, ay = self.x.flatten()
+        cosPsi = np.cos(yaw)
+        sinPsi = np.sin(yaw)
+        dt2 = dt ** 2 / 2
 
-    def compute_jacobian(self, x, dt):
-        """Computes Jacobian of the transition function wrt state."""
-        _, _, psi, u, v, _ = x.flatten()
+        F = np.eye(8)
 
-        F = np.eye(6)
-        F[0, 2] = (-u * np.sin(psi) - v * np.cos(psi)) * dt
-        F[0, 3] =  np.cos(psi) * dt
-        F[0, 4] = -np.sin(psi) * dt
+        # Position x
+        F[0, 2] = -u * sinPsi * dt - v * cosPsi * dt - ax * sinPsi * dt2 - ay * cosPsi * dt2
+        F[0, 3] = cosPsi * dt
+        F[0, 4] = -sinPsi * dt
+        F[0, 6] = cosPsi * dt2
+        F[0, 7] = -sinPsi * dt2
 
-        F[1, 2] = ( u * np.cos(psi) - v * np.sin(psi)) * dt
-        F[1, 3] =  np.sin(psi) * dt
-        F[1, 4] =  np.cos(psi) * dt
+        # Position y
+        F[1, 2] = u * cosPsi * dt - v * sinPsi * dt + ax * cosPsi * dt2 - ay * sinPsi * dt2
+        F[1, 3] = sinPsi * dt
+        F[1, 4] = cosPsi * dt
+        F[1, 6] = sinPsi * dt2
+        F[1, 7] = cosPsi * dt2
 
-        F[2, 5] = dt  # yaw += r * dt
+        # Yaw (psi)
+        F[2, 5] = dt
+
+        # Velocity u
+        F[3, 6] = dt
+
+        # Velocity v
+        F[4, 7] = dt
+
+        # Rest (r, ax, ay) are constant → already set by identity
 
         return F
 
@@ -304,11 +375,11 @@ class KalmanFilterXY:
         """Update with AIS measurement z = [[x], [y], [speed], [heading (degrees)]."""
         if R_AIS is None:
             R_AIS = np.eye(5) * 0.001
-            R_AIS[0][0] = 0.001  # x
-            R_AIS[1][1] = 0.001  # y
-            R_AIS[2][2] = 0.001  # heading
+            R_AIS[0][0] = 1  # x
+            R_AIS[1][1] = 1  # y
+            R_AIS[2][2] = 0.1  # heading
             R_AIS[3][3] = 0.01  # u
-            R_AIS[4][4] = 0.01  # v
+            R_AIS[4][4] = 0.1  # v
             # R_AIS = np.array([[10, 0, 0, 0],
             #                   [0, 10, 0, 0],
             #                   [0, 0, 10, 0],
