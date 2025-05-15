@@ -16,7 +16,7 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enablePositionWindow = True
+enablePositionWindow = False
 plotLocalPosition = False
 
 enableDroneAttitudeWindow = False
@@ -28,9 +28,9 @@ enableRelativeVelocityWindow = True
 
 enableWindWindow = False
 
-enableCollisionWindow = True
+enableCollisionWindow = False
 
-enableDistToP = False
+enableDistToP = True
 
 
 savePlots = False
@@ -76,7 +76,7 @@ if enablePositionWindow:
         figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Local Position View", constrained_layout=True)
         figGlobal.suptitle("Local Position (NED)", fontsize=25)
     else:
-        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(6, 4), num="Global Position View", constrained_layout=True)
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
     figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
