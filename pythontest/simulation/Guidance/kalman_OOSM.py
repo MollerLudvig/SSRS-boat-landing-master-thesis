@@ -222,8 +222,7 @@ class KalmanFilterXY:
             [v],
             [r]
         ])
-        
-        # Wrap angles to [-180, 180]
+        # Wrap angles to [-pi, pi]
         dx[2][0] = self.wrap_angle_deg(dx[2][0])
 
         return dx
@@ -309,9 +308,8 @@ class KalmanFilterXY:
         # TODO: these cos sin are probably not correct anymore
         # PROBABLY GOOD NOW I THINK
 
-        # Convert local offset to global coordinates (keep in mind compass heading)
-        # dx_global = delta_x * np.cos(measurement_point_heading) + delta_y * np.sin(measurement_point_heading)
-        # dy_global = - delta_x * np.sin(measurement_point_heading) + delta_y * np.cos(measurement_point_heading)
+        # Convert local offset to global NED coordinates
+        # For North=0°, East=90° convention:
         dx_global = delta_x * np.cos(measurement_point_heading) - delta_y * np.sin(measurement_point_heading)
         dy_global = delta_x * np.sin(measurement_point_heading) + delta_y * np.cos(measurement_point_heading)
 
