@@ -35,7 +35,7 @@ def tester():
     use_filter = False
     fluct_boat_movement = False
     fluct_boat_alt = False
-    fluct_drone_throttle = False
+    fluct_drone_throttle = True
     maneuver_boat = False
 
     # PARAMETERS:
@@ -49,9 +49,9 @@ def tester():
     impact_speed = 2
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 3 # Heading in degrees
+    boat_movement_fluctuation = 30 # Heading in degrees
     boat_alt_fluctuation = 4 # Meters
-    throttle_fluct = 50
+    throttle_fluct = 100
     turning_fluctuation_angle = 40 # Degrees
 
     # BASE VALUES:
