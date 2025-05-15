@@ -520,7 +520,7 @@ def predict_kf(kf, boat, boat_length, timestamp):
     update_object(boat, kf, boat_length)
 
     
-def update_object(obj: Vehicle, filter: K, boat_length = 0):
+def update_object(obj: Vehicle, filter: KalmanFilterXY, boat_length = 0):
     # Update the object's position using the Kalman filter
     obj.lat = filter.lat
     obj.lon = filter.lon
