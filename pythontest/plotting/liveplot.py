@@ -17,7 +17,8 @@ Simulation = True
 
 # Configure window display options
 enablePositionWindow = True
-plotLocalPosition = False
+plotLocalPosition = True
+enableBoatTail = True
 
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
