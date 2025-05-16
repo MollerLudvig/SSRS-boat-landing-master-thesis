@@ -4,6 +4,8 @@ from typing import List
 from variabels import VehicleData
 from coordinate_conv import latlon_to_xy
 
+interpolate = True
+
 @dataclass
 class ColissionData:
     time: List[float] = field(default_factory=list)
@@ -49,6 +51,40 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
     # Leave margin at the end to avoid edge effects
     end_index = len(droneData.simulation.time) - 5 if len(droneData.simulation.time) > 5 else 0
     
+
+
+    # interpolate boat data to drone time
+    if interpolate:
+        # Ceck where to start
+        interpolation_len = len(boatData.interpolation.time)
+        simulation_len = len(droneData.simulation.time)
+
+        if interpolation_len > simulation_len:
+            # TODO se till så interpolation kortas ner på samma sätt som 
+            
+
+        start_index = 0
+        for time_ind, time_val in enumerate(droneData.simulation.time):
+            if interpolation_len == 0:
+                # If no data added, start from the beginning
+                break
+
+            # Check if the drone time is within the boat time range
+            if time_val < start_time or time_val > end_time:
+                start_index = time_ind
+                break
+
+        boatData.interpolation.lat = [interpolate_signal(time_val, boat_times, boatData.simulation.lat) for time_val in droneData.simulation.time[start_index:end_index]]
+        boatData.interpolation.lon = [interpolate_signal(time_val, boat_times, boatData.simulation.lon) for time_val in droneData.simulation.time[start_index:end_index]]
+        boatData.interpolation.alt = [interpolate_signal(time_val, boat_times, boatData.simulation.alt) for time_val in droneData.simulation.time[start_index:end_index]]
+        boatData.interpolation.yaw = [interpolate_yaw(time_val, boat_times, boatData.simulation.yaw) for time_val in droneData.simulation.time[start_index:end_index]]
+        boatData.interpolation.time = droneData.simulation.time[start_index:end_index]
+
+        for time_ind, time_val in enumerate(droneData.simulation.time[start_index:end_index]):
+            #TODO Implementera loopen som jämför som nedanför
+
+    
+    
     for time_ind, time_val in enumerate(droneData.simulation.time[:end_index]):
         # Skip if outside common time window
         if time_val < start_time or time_val > end_time:
@@ -86,15 +122,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         dd = droneData.simulation.alt[time_ind] - boatData.simulation.alt[closest_index]
         
         # NED to XYZ rotation around Z axis (apply boat's yaw)
-        yaw_rad = -np.radians(boatData.simulation.yaw[closest_index])
-        dx = dn * np.cos(yaw_rad) - de * np.sin(yaw_rad)
-        dy = dn * np.sin(yaw_rad) + de * np.cos(yaw_rad)
-        dz = dd
-        
+        dx, dy, dz = NED_to_XYZ(boatData.simulation.yaw[closest_index], dn, de, dd)
         # Apply offset transform
-        dx += offset_transform[0]
-        dy += offset_transform[1]
-        dz -= offset_transform[2]
+        dx, dy, dz = apply_transform(dx, dy, dz, offset_transform)
         
         # Calculate distance
         distance = np.sqrt(dx**2 + dy**2 + dz**2)
@@ -123,3 +153,30 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
               f"Avg: {total_delta/points_processed:.4f}s, Skipped: {skipped_points} points")
     else:
         print("No data points were processed")
+
+def interpolate_signal(targetTime: float, sourceTimes: List[float], sourceValues: List[float]):
+    return float(np.interp(targetTime, sourceTimes, sourceValues))
+
+
+def interpolate_yaw(targetTime: float, sourceTimes: List[float], yawValues: List[float]):
+    radians = np.radians(yawValues)
+    sinVals = np.sin(radians)
+    cosVals = np.cos(radians)
+    sinInterp = np.interp(targetTime, sourceTimes, sinVals)
+    cosInterp = np.interp(targetTime, sourceTimes, cosVals)
+    return np.degrees(np.arctan2(sinInterp, cosInterp)) % 360
+
+def apply_transform(x,y,z, offset_transform: List[float]):
+    # Apply offset transform
+    x += offset_transform[0]
+    y += offset_transform[1]
+    z -= offset_transform[2]
+    return x, y, z
+
+def NED_to_XYZ(yaw_deg: float, n: float, e: float, d: float):
+    # NED to XYZ rotation around Z axis (apply boat's yaw)
+    yaw_rad = -np.radians(yaw_deg)
+    x = n * np.cos(yaw_rad) - de * np.sin(yaw_rad)
+    y = n * np.sin(yaw_rad) + de * np.cos(yaw_rad)
+    z = d
+    return x, y, z

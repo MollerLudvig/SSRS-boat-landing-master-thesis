@@ -83,6 +83,21 @@ class SimulationData:
     vy: Optional[List[float]] = None
     vz: Optional[List[float]] = None
 
+
+@dataclass
+class InterpolationData:
+    time: Optional[List[float]] = None
+    lat: Optional[List[float]] = None
+    lon: Optional[List[float]] = None
+    alt: Optional[List[float]] = None
+    yaw: Optional[List[float]] = None
+    vn: Optional[List[float]] = None  # North velocity
+    ve: Optional[List[float]] = None  # East velocity
+    vd: Optional[List[float]] = None  # Down velocity
+    vx: Optional[List[float]] = None
+    vy: Optional[List[float]] = None
+    vz: Optional[List[float]] = None
+
 class VehicleData:
     """
     Structured container for vehicle data that safely stores data from VehicleMonitor.
@@ -102,7 +117,10 @@ class VehicleData:
         self.imu = IMUData()
         self.wind = WindData()
         self.simulation = SimulationData()
+        self.interpolation = InterpolationData()
         self._lock = Lock()  # Add our own lock for thread safety
+        self.distance_to_tail = []
+        self.distance_to_tail_time = []
 
     def update(self):
         """
