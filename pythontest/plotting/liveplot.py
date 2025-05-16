@@ -79,6 +79,10 @@ if enablePositionWindow:
         figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
         figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
+    if enableBoatTail:
+        figRmsTail, axRmsTail = plt.subplots(2, 1, figsize=(8, 8), num="Distance to aft projection", constrained_layout=True)
+        figRmsTail.suptitle("Distance to aft projection", fontsize=25)
+
 if enableDroneAttitudeWindow:
     figDroneAtt, axsDroneAtt = plt.subplots(3, 1, figsize=(10, 8), num="Drone Attitude", constrained_layout=True)
     figDroneAtt.suptitle(f"Drone Attitude & Sensor Data", fontsize=14)
@@ -124,10 +128,10 @@ def plot_local_position():
     axGlobal.clear()
 
     # Choose a fixed origin for local frame (boat's first sim point if available)
-    if boatData.simulation.lat and refLat is None and refLon is None:
-        refLat = boatData.simulation.lat[0]
-        refLon = boatData.simulation.lon[0]
-    elif boatData.gps.lat and refLat is None and refLon is None:
+    # if boatData.simulation.lat and refLat is None and refLon is None:
+    #     refLat = boatData.simulation.lat[0]
+    #     refLon = boatData.simulation.lon[0]
+    if boatData.gps.lat and refLat is None and refLon is None:
         refLat = boatData.gps.lat[0]
         refLon = boatData.gps.lon[0]
     elif refLat is None and refLon is None:
@@ -148,31 +152,42 @@ def plot_local_position():
     else:
         print("No P2 data available.")
 
-    # Plot boat position
-    if boatData.simulation.lat:
-        x, y = latlon_to_xy_vectors(boatData.simulation.lat[-50:], boatData.simulation.lon[-50:], refLat, refLon)
-        axGlobal.plot(x, y, markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
-        xLast, yLast = latlon_to_xy_vectors(boatData.simulation.lat[-1], boatData.simulation.lon[-1], refLat, refLon)
-        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.boat, fillstyle='none')
-    elif boatData.gps.lat:
-        print('Simdata not available, using GPS data (BOAT)')
-        x, y = latlon_to_xy_vectors(boatData.gps.lat[-50:], boatData.gps.lon[-50:], refLat, refLon)
-        axGlobal.plot(x, y, markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
-        xLast, yLast = latlon_to_xy_vectors(boatData.gps.lat[-1], boatData.gps.lon[-1], refLat, refLon)
-        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
-
-    # Plot drone position
-    if droneData.simulation.lat:
-        x, y = latlon_to_xy_vectors(droneData.simulation.lat[-50:], droneData.simulation.lon[-50:], refLat, refLon)
-        axGlobal.plot(x, y, markersize=10, label="Drone (SIM)", color=colors.drone)
-        xLast, yLast = latlon_to_xy_vectors(droneData.simulation.lat[-1], droneData.simulation.lon[-1], refLat, refLon)
-        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.drone)
-    elif droneData.gps.lat:
+    
+    # # Plot drone position
+    # if droneData.simulation.lat:
+    #     x, y = latlon_to_xy_vectors(droneData.simulation.lat[-50:], droneData.simulation.lon[-50:], refLat, refLon)
+    #     axGlobal.plot(x, y, markersize=10, label="Drone (SIM)", color=colors.drone)
+    #     xLastDrone, yLastDrone = latlon_to_xy_vectors(droneData.simulation.lat[-1], droneData.simulation.lon[-1], refLat, refLon)
+    #     axGlobal.plot(xLastDrone, yLastDrone, 'x', markersize=15, color=colors.drone)
+    if droneData.gps.lat:
         print('Simdata not available, using GPS data (DRONE)')
         x, y = latlon_to_xy_vectors(droneData.gps.lat[-50:], droneData.gps.lon[-50:], refLat, refLon)
         axGlobal.plot(x, y, markersize=10, label="Drone (GPS)", color=colors.drone, alpha=0.7)
-        xLast, yLast = latlon_to_xy_vectors(droneData.gps.lat[-1], droneData.gps.lon[-1], refLat, refLon)
-        axGlobal.plot(xLast, yLast, 'x', markersize=15, color=colors.drone, alpha=0.7)
+        xLastDrone, yLastDrone = latlon_to_xy_vectors(droneData.gps.lat[-1], droneData.gps.lon[-1], refLat, refLon)
+        axGlobal.plot(xLastDrone, yLastDrone, 'x', markersize=15, color=colors.drone, alpha=0.7)
+
+    # Plot boat position
+    # if boatData.simulation.lat:
+    #     x, y = latlon_to_xy_vectors(boatData.simulation.lat[-50:], boatData.simulation.lon[-50:], refLat, refLon)
+    #     axGlobal.plot(x, y, markersize=10, label="Boat (SIM)", color=colors.boat, fillstyle='none')
+    #     xLastBoat, yLastBoat = latlon_to_xy_vectors(boatData.simulation.lat[-1], boatData.simulation.lon[-1], refLat, refLon)
+    #     axGlobal.plot(xLastBoat, yLastBoat, 'x', markersize=15, color=colors.boat, fillstyle='none')
+    if boatData.gps.lat:
+        print('Simdata not available, using GPS data (BOAT)')
+        x, y = latlon_to_xy_vectors(boatData.gps.lat[-50:], boatData.gps.lon[-50:], refLat, refLon)
+        axGlobal.plot(x, y, markersize=10, label="Boat (GPS)", color=colors.boat, alpha=0.7, fillstyle='none')
+        xLastBoat, yLastBoat = latlon_to_xy_vectors(boatData.gps.lat[-1], boatData.gps.lon[-1], refLat, refLon)
+        axGlobal.plot(xLastBoat, yLastBoat, 'x', markersize=15, color=colors.boat, alpha=0.7, fillstyle='none')
+
+
+    if enableBoatTail and boatData.gps.lat:
+        tail_length = 200  # tail length in meters
+
+        end_x = xLastBoat - tail_length * np.sin(np.radians(boatData.gps.hdg[-1]))
+        end_y = yLastBoat - tail_length * np.cos(np.radians(boatData.gps.hdg[-1]))
+
+        axGlobal.plot([xLastBoat, end_x], [yLastBoat, end_y], label="Aft projection", color="dimgray", alpha=0.5, linewidth=2)
+
 
     # Axis formatting
     axGlobal.set_xlabel("East (m)", fontsize=18)
@@ -181,6 +196,25 @@ def plot_local_position():
     axGlobal.tick_params(axis='both', labelsize=18)
     axGlobal.grid(True)
     axGlobal.axis('equal')
+
+    # Add plott for tail distance
+    if enableBoatTail and boatData.gps.lat:
+        # Calculate the distance to the tail projection
+        # Calculations from wikipedia
+        nominator = np.abs((end_y - yLastBoat)*xLastDrone - (end_x - xLastBoat)*yLastDrone + end_x*yLastBoat - end_y*xLastBoat)
+        denominator = np.sqrt((end_y - yLastBoat)**2 + (end_x - xLastBoat)**2)
+        droneData.distance_to_tail.append(nominator/denominator)
+        droneData.distance_to_tail_time.append(droneData.gps.time[-1])
+
+        axRmsTail[0].clear()
+        axRmsTail[0].plot(droneData.distance_to_tail_time[-int(displayed_indices/5):], droneData.distance_to_tail[-int(displayed_indices/5):], label="Distance to tail projection", color=colors.boat)
+        axRmsTail[0].set_ylabel("Distance (m)", fontsize=18)
+        axRmsTail[0].set_xlabel("Time (s)", fontsize=18)
+        axRmsTail[0].set_title("Distance to aft projection", fontsize=18)
+        axRmsTail[0].legend(fontsize=18)
+        axRmsTail[0].grid(True)
+
+        
 
 
 def plot_global_position_():
