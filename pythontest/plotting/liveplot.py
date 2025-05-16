@@ -16,21 +16,21 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enablePositionWindow = False
+enablePositionWindow = True
 plotLocalPosition = False
 
 enableDroneAttitudeWindow = False
 enableBoatAttitudeWindow = False
 
-enableDroneVelocityWindow = True
-enableBoatVelocityWindow = True
-enableRelativeVelocityWindow = True
+enableDroneVelocityWindow = False
+enableBoatVelocityWindow = False
+enableRelativeVelocityWindow = False
 
 enableWindWindow = False
 
 enableCollisionWindow = False
 
-enableDistToP = True
+enableDistToP = False
 
 
 savePlots = False

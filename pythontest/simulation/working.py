@@ -35,8 +35,8 @@ def tester():
     use_filter = False
     fluct_boat_movement = False
     fluct_boat_alt = False
-    fluct_drone_throttle = True
-    maneuver_boat = False
+    fluct_drone_throttle = False
+    maneuver_boat = True
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
@@ -47,11 +47,12 @@ def tester():
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
     impact_speed = 2
+    P2_lookahead = 20
 
     # FLUCTUATIONS:
     boat_movement_fluctuation = 30 # Heading in degrees
     boat_alt_fluctuation = 4 # Meters
-    throttle_fluct = 100
+    throttle_fluct = 200
     turning_fluctuation_angle = 40 # Degrees
 
     # BASE VALUES:
@@ -272,7 +273,7 @@ def tester():
             boat.set_guided_waypoint(boat_target_lat, boat_target_lon, commanded_boat_altitude)
 
             # Set boat's last recieved position as a waypoint for the drone
-            target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, 40)
+            target_lat, target_lon = wp.calc_look_ahead_point(P2_lat, P2_lon, boat.heading, P2_lookahead)
             drone.follow_target([target_lat], [target_lon], [cruise_altitude])
 
             # Dont just calculate dist between drone and P1 because it will still be 
