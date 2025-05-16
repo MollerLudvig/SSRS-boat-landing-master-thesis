@@ -77,7 +77,7 @@ if enablePositionWindow:
         figGlobal.suptitle("Local Position (NED)", fontsize=25)
     else:
         figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
-    figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
+        figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
 if enableDroneAttitudeWindow:
     figDroneAtt, axsDroneAtt = plt.subplots(3, 1, figsize=(10, 8), num="Drone Attitude", constrained_layout=True)
