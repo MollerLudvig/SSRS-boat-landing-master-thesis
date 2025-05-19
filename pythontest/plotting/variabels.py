@@ -103,6 +103,8 @@ class VehicleData:
         self.wind = WindData()
         self.simulation = SimulationData()
         self._lock = Lock()  # Add our own lock for thread safety
+        self.distance_to_tail = []
+        self.distance_to_tail_time = []
 
     def update(self):
         """
