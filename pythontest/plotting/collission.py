@@ -24,8 +24,8 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
             max_time_delta: float = 0.1):  # Add maximum allowed time difference
 
     # Get time ranges for both datasets
-    boat_times = np.array(boatData.simulation.time)
-    drone_times = np.array(droneData.simulation.time)
+    boat_times = np.array(boatData.gps.time)
+    drone_times = np.array(droneData.gps.time)
     
     # Find common time window
     start_time = max(drone_times[0] if len(drone_times) > 0 else 0, 
@@ -47,9 +47,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
     
     # Process drone data within the common time window
     # Leave margin at the end to avoid edge effects
-    end_index = len(droneData.simulation.time) - 5 if len(droneData.simulation.time) > 5 else 0
+    end_index = len(droneData.gps.time) - 5 if len(droneData.gps.time) > 5 else 0
     
-    for time_ind, time_val in enumerate(droneData.simulation.time[:end_index]):
+    for time_ind, time_val in enumerate(droneData.gps.time[:end_index]):
         # Skip if outside common time window
         if time_val < start_time or time_val > end_time:
             continue
@@ -59,9 +59,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
             continue
         
         # Find closest boat data point
-        diff_array = np.abs(np.array(boatData.simulation.time) - time_val)
+        diff_array = np.abs(np.array(boatData.gps.time) - time_val)
         closest_index = np.argmin(diff_array)
-        time_diff = abs(time_val - boatData.simulation.time[closest_index])
+        time_diff = abs(time_val - boatData.gps.time[closest_index])
         
         # Skip if time difference is too large
         if time_diff > max_time_delta:
@@ -77,18 +77,18 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
         points_processed += 1
             
         # Calculate position difference
-        dn, de = latlon_to_xy(lat=droneData.simulation.lat[time_ind],
-                             lon=droneData.simulation.lon[time_ind],
-                             lat0=boatData.simulation.lat[closest_index],
-                             lon0=boatData.simulation.lon[closest_index])
+        dn, de = latlon_to_xy(lat=droneData.gps.lat[time_ind],
+                             lon=droneData.gps.lon[time_ind],
+                             lat0=boatData.gps.lat[closest_index],
+                             lon0=boatData.gps.lon[closest_index])
         
         # Get altitude difference (delta down): This is actuallt inverted so from drones perspective but thats for plotting reasons
-        dd = droneData.simulation.alt[time_ind] - boatData.simulation.alt[closest_index]
+        dd = droneData.gps.alt[time_ind] - boatData.gps.alt[closest_index]
         
         # NED to XYZ rotation around Z axis (apply boat's yaw)
-        yaw_rad = -np.radians(boatData.simulation.yaw[closest_index])
-        dx = dn * np.cos(yaw_rad) - de * np.sin(yaw_rad)
-        dy = dn * np.sin(yaw_rad) + de * np.cos(yaw_rad)
+        hdg_rad = -np.radians(boatData.gps.hdg[closest_index])
+        dx = dn * np.cos(hdg_rad) - de * np.sin(hdg_rad)
+        dy = dn * np.sin(hdg_rad) + de * np.cos(hdg_rad)
         dz = dd
         
         # Apply offset transform
