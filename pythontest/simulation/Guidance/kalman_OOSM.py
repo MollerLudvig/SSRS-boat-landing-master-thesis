@@ -210,7 +210,7 @@ class KalmanFilterXY:
              0.5 * (u_acc * np.cos(psi) - v_acc * np.sin(psi)) * dt**2
              ],
             [y_pos + 
-             (u * np.sin(psi) + v * np.cos(psi)) * dt**2 +
+             (u * np.sin(psi) + v * np.cos(psi)) * dt +
              0.5 * (u_acc * np.sin(psi) + v_acc * np.cos(psi)) * dt**2
              ],
             [psi + r * dt],
