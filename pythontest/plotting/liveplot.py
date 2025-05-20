@@ -29,7 +29,7 @@ enableRelativeVelocityWindow = False
 
 enableWindWindow = False
 
-enableCollisionWindow = False
+enableCollisionWindow = True
 
 enableDistToP = False
 
@@ -110,7 +110,7 @@ if enableWindWindow:
 
 if enableCollisionWindow:
     figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection", constrained_layout=True)
-    figCollision.suptitle(f"Collision Detection", fontsize=14)
+    figCollision.suptitle(f"Collision Detection", fontsize=20)
 
 if enableDistToP:
     figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
@@ -612,41 +612,46 @@ def update_plot(_):
         # Collision detection
         axsCollision[0, 0].clear()
         axsCollision[0, 0].plot(collision_data.time[-displayed_indices:], collision_data.distance[-displayed_indices:], label='Absolute distance', color='red')
-        axsCollision[0, 0].set_title("Absolute Distance, boat to drone")
-        axsCollision[0, 0].set_ylabel("Collision")
-        axsCollision[0, 0].legend()
+        axsCollision[0, 0].set_title("Absolute Distance, boat to drone", fontsize=16)
+        axsCollision[0, 0].set_ylabel("Collision", fontsize=14)
+        axsCollision[0, 0].tick_params(axis='both', labelsize=10)
+        axsCollision[0, 0].legend(fontsize=10)
         axsCollision[0, 0].grid(True)
         
         # Collision distance
         axsCollision[0, 1].clear()
         axsCollision[0, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_x[-displayed_indices:], label='Delta X', color='blue')
-        axsCollision[0, 1].set_title("Delta X to Collision")
-        axsCollision[0, 1].set_ylabel("Distance (m)")
-        axsCollision[0, 1].legend()
+        axsCollision[0, 1].set_title("Delta X to Collision", fontsize=16)
+        axsCollision[0, 1].set_ylabel("Distance (m)", fontsize=14)
+        axsCollision[0, 1].tick_params(axis='both', labelsize=10)
+        axsCollision[0, 1].legend(fontsize=12)
         axsCollision[0, 1].grid(True)
         
         # Collision delta time
         axsCollision[1, 0].clear()
         axsCollision[1, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_y[-displayed_indices:], label='Delta Y', color='green')
-        axsCollision[1, 0].set_title("Delta Y to Collision")
-        axsCollision[1, 0].set_ylabel("Distance (m)")
-        axsCollision[1, 0].legend()
+        axsCollision[1, 0].set_title("Delta Y to Collision", fontsize=16)
+        axsCollision[1, 0].set_ylabel("Distance (m)", fontsize=14)
+        axsCollision[1, 0].tick_params(axis='both', labelsize=10)
+        axsCollision[1, 0].legend(fontsize=12)
         axsCollision[1, 0].grid(True)
         
         # Collision delta x
         axsCollision[1, 1].clear()
         axsCollision[1, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_z[-displayed_indices:], label='Delta Z', color='orange')
-        axsCollision[1, 1].set_title("Delta Z to Collision")
-        axsCollision[1, 1].set_ylabel("Distance (m)")
-        axsCollision[1, 1].legend()
+        axsCollision[1, 1].set_title("Delta Z to Collision", fontsize=16)
+        axsCollision[1, 1].set_ylabel("Distance (m)", fontsize=14)
+        axsCollision[1, 1].tick_params(axis='both', labelsize=10)
+        axsCollision[1, 1].legend(fontsize=12)
         axsCollision[1, 1].grid(True)
 
         # Delta time
         axsCollision[2, 0].clear()
         axsCollision[2, 0].plot(collision_data.delta_time_timestamp[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
-        axsCollision[2, 0].set_title("Delta Time measurments")
-        axsCollision[2, 0].set_ylabel("Time (s)")
-        axsCollision[2, 0].set_xlabel("Timesteps")
+        axsCollision[2, 0].set_title("Delta Time measurments", fontsize=16)
+        axsCollision[2, 0].set_ylabel("Time (s)", fontsize=14)
+        axsCollision[2, 0].set_xlabel("Timesteps", fontsize=14)
+        axsCollision[2, 0].tick_params(axis='both', labelsize=10)
 
         # Mask out none collision timepoints in distance data
         collision_mask = np.array(collision_data.collision[-displayed_indices:])
@@ -658,16 +663,18 @@ def update_plot(_):
         if collision_data.collision[-displayed_indices:]:
             axsCollision[2, 1].clear()
             axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
-            axsCollision[2, 1].set_title("Collision")
-            axsCollision[2, 1].set_ylabel("Collision")
-            axsCollision[2, 1].legend()
+            axsCollision[2, 1].set_title("Collision", fontsize=16)
+            axsCollision[2, 1].set_ylabel("Collision", fontsize=14)
+            axsCollision[2, 1].tick_params(axis='both', labelsize=10)
+            axsCollision[2, 1].legend(fontsize=12)
             axsCollision[2, 1].grid(True)
         else:
             axsCollision[2, 1].clear()
             axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='No Collision', color='red')
-            axsCollision[2, 1].set_title("No Collision")
-            axsCollision[2, 1].set_ylabel("Distance (m)")
-            axsCollision[2, 1].legend()
+            axsCollision[2, 1].set_title("No Collision", fontsize=16)
+            axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=14)
+            axsCollision[2, 1].tick_params(axis='both', labelsize=10)
+            axsCollision[2, 1].legend(fontsize=12)
             axsCollision[2, 1].grid(True)
 
 
