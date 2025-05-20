@@ -4,6 +4,11 @@ from typing import List
 from variabels import VehicleData
 from coordinate_conv import latlon_to_xy
 
+collision_active = False
+collision_closest = float('inf')
+collision_timestamp = None
+collision_colsest_xyz = [float('inf'),float('inf'),float('inf')]
+
 @dataclass
 class ColissionData:
     time: List[float] = field(default_factory=list)
@@ -17,12 +22,18 @@ class ColissionData:
     delta_n: List[float] = field(default_factory=list)
     delta_e: List[float] = field(default_factory=list)
     delta_d: List[float] = field(default_factory=list)
+    closest_time: List[float] = field(default_factory=list)
+    closest_distance: List[float] = field(default_factory=list)
+    closest_delta_x: List[float] = field(default_factory=list)
+    closest_delta_y: List[float] = field(default_factory=list)
+    closest_delta_z: List[float] = field(default_factory=list)
 
 
 def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: VehicleData, 
             landing_threshold: List[float] = [0, 0, 0], offset_transform: List[float] = [0, 0, 0],
             max_time_delta: float = 0.1):  # Add maximum allowed time difference
 
+    global collision_active, collision_closest, collision_timestamp, collision_colsest_xyz
     # Get time ranges for both datasets
     boat_times = np.array(boatData.gps.time)
     drone_times = np.array(droneData.gps.time)
@@ -101,9 +112,32 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
 
         if np.abs(dx) < landing_threshold[0] and np.abs(dy) < landing_threshold[1] and np.abs(dz) < landing_threshold[2]:
             collision_data.collision.append(True)
-            print(f"Collision detected at time {time_val:.4f}s: distance = {distance:.2f}m")
+            # print(f"Collision detected at time {time_val:.4f}s: distance = {distance:.2f}m")
+            collision_active = True
+
+            # Update closest collision
+            if distance < collision_closest:
+                collision_closest = distance
+                collision_timestamp = time_val
+                collision_colsest_xyz =[dx, dy, dz]
+
         else:
             collision_data.collision.append(False)
+            if collision_active:
+                print("/n")
+                print(f"Closest collision was at time {collision_timestamp:.4f}s with distance {collision_closest:.2f}m")
+                print(f"Collision dx: {collision_colsest_xyz[0]:.2f}m, dy: {collision_colsest_xyz[1]:.2f}m, dz: {collision_colsest_xyz[2]:.2f}m")
+                print("/n")
+                collision_data.closest_time.append(collision_timestamp)
+                collision_data.closest_distance.append(collision_closest)
+                collision_data.closest_delta_x.append(collision_colsest_xyz[0])
+                collision_data.closest_delta_y.append(collision_colsest_xyz[1])
+                collision_data.closest_delta_z.append(collision_colsest_xyz[2])
+
+                collision_active = False
+                collision_closest = float('inf')
+                collision_timestamp = None
+
         
         # Record data
         collision_data.time.append(time_val)
@@ -119,7 +153,9 @@ def is_landed(collision_data: ColissionData, boatData: VehicleData, droneData: V
     
     # Print time delta statistics
     if points_processed > 0:
-        print(f"Time delta stats - Min: {min_delta:.4f}s, Max: {max_delta:.4f}s, " +
-              f"Avg: {total_delta/points_processed:.4f}s, Skipped: {skipped_points} points")
+        # Do nothing
+        pass
+        # print(f"Time delta stats - Min: {min_delta:.4f}s, Max: {max_delta:.4f}s, " +
+        #       f"Avg: {total_delta/points_processed:.4f}s, Skipped: {skipped_points} points")
     else:
         print("No data points were processed")

@@ -609,9 +609,22 @@ def update_plot(_):
 
     # 8. Update Collision Window
     if enableCollisionWindow:
+
+        # Add colision line in relevan time window
+        collision_timestamps = []
+        if len(collision_data.closest_time) != 0:
+            min_time = collision_data.time[-displayed_indices]
+            for _, time in enumerate(collision_data.closest_time):
+                if min_time <= time:
+                    collision_timestamps.append(time)
+
+
         # Collision detection
         axsCollision[0, 0].clear()
         axsCollision[0, 0].plot(collision_data.time[-displayed_indices:], collision_data.distance[-displayed_indices:], label='Absolute distance', color='red')
+        for i, t in enumerate(collision_timestamps):
+            label = 'Event Time' if i == 0 else ""
+            axsCollision[0, 0].axvline(x=t, color='black', linestyle='--', label=label)
         axsCollision[0, 0].set_title("Absolute Distance, boat to drone", fontsize=16)
         axsCollision[0, 0].set_ylabel("Collision", fontsize=14)
         axsCollision[0, 0].tick_params(axis='both', labelsize=10)
@@ -621,6 +634,9 @@ def update_plot(_):
         # Collision distance
         axsCollision[0, 1].clear()
         axsCollision[0, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_x[-displayed_indices:], label='Delta X', color='blue')
+        for i, t in enumerate(collision_timestamps):
+            label = 'Event Time' if i == 0 else ""
+            axsCollision[0, 1].axvline(x=t, color='black', linestyle='--', label=label)
         axsCollision[0, 1].set_title("Delta X to Collision", fontsize=16)
         axsCollision[0, 1].set_ylabel("Distance (m)", fontsize=14)
         axsCollision[0, 1].tick_params(axis='both', labelsize=10)
@@ -630,6 +646,9 @@ def update_plot(_):
         # Collision delta time
         axsCollision[1, 0].clear()
         axsCollision[1, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_y[-displayed_indices:], label='Delta Y', color='green')
+        for i, t in enumerate(collision_timestamps):
+            label = 'Event Time' if i == 0 else ""
+            axsCollision[1, 0].axvline(x=t, color='black', linestyle='--', label=label)
         axsCollision[1, 0].set_title("Delta Y to Collision", fontsize=16)
         axsCollision[1, 0].set_ylabel("Distance (m)", fontsize=14)
         axsCollision[1, 0].tick_params(axis='both', labelsize=10)
@@ -639,6 +658,9 @@ def update_plot(_):
         # Collision delta x
         axsCollision[1, 1].clear()
         axsCollision[1, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_z[-displayed_indices:], label='Delta Z', color='orange')
+        for i, t in enumerate(collision_timestamps):
+            label = 'Event Time' if i == 0 else ""
+            axsCollision[1, 1].axvline(x=t, color='black', linestyle='--', label=label)
         axsCollision[1, 1].set_title("Delta Z to Collision", fontsize=16)
         axsCollision[1, 1].set_ylabel("Distance (m)", fontsize=14)
         axsCollision[1, 1].tick_params(axis='both', labelsize=10)
@@ -663,6 +685,9 @@ def update_plot(_):
         if collision_data.collision[-displayed_indices:]:
             axsCollision[2, 1].clear()
             axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
+            for i, t in enumerate(collision_timestamps):
+                label = 'Event Time' if i == 0 else ""
+                axsCollision[2, 1].axvline(x=t, color='black', linestyle='--', label=label)
             axsCollision[2, 1].set_title("Collision", fontsize=16)
             axsCollision[2, 1].set_ylabel("Collision", fontsize=14)
             axsCollision[2, 1].tick_params(axis='both', labelsize=10)
