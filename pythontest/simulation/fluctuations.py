@@ -11,7 +11,7 @@ def boat_movement(flag, magnitude, desired_boat_direction):
     return boat_direction
 
 def boat_altitude(flag, magnitude, base_altitude, i):
-    boat_alt_fluct = magnitude*np.sin(i*0.3) + np.random.normal(0, magnitude/3)
+    boat_alt_fluct = magnitude*np.sin(i*0.2) + np.random.normal(0, magnitude/3)
     noisy_boat_alt = base_altitude + boat_alt_fluct
 
     boat_alt = base_altitude

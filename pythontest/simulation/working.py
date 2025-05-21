@@ -33,8 +33,8 @@ def tester():
 
     verbose = True
     use_filter = False
-    fluct_boat_movement = True
-    fluct_boat_alt = False
+    fluct_boat_movement = False
+    fluct_boat_alt = True
     fluct_drone_throttle = False
     maneuver_boat = False
 
@@ -51,7 +51,7 @@ def tester():
 
     # FLUCTUATIONS:
     boat_movement_fluctuation = 10 # Heading in degrees, 10 for landing, 30 for follow
-    boat_alt_fluctuation = 4 # Meters
+    boat_alt_fluctuation = 6 # Meters
     throttle_fluct = 200
     turning_fluctuation_angle = 40 # Degrees
 
