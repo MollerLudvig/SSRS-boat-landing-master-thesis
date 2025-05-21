@@ -822,7 +822,7 @@ def update_plot(_):
     if enableAltitude:
         # Altitude boat
         axsAltitude[0].clear()
-        axsAltitude[0].plot(boatData.position.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
+        axsAltitude[0].plot(boatData.gps.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
         axsAltitude[0].set_title("Altitude Boat", fontsize=20)
         axsAltitude[0].set_ylabel("Altitude (m)", fontsize=17)
         axsAltitude[0].set_xlabel("Time (s)", fontsize=17)
@@ -831,11 +831,12 @@ def update_plot(_):
         axsAltitude[0].grid(True)
         # Altitude drone
         axsAltitude[1].clear()
-        axsAltitude[1].plot(droneData.position.time[-displayed_indices:], droneData.gps.alt[-displayed_indices:], label='Altitude', color=colors.drone)
+        axsAltitude[1].plot(droneData.gps.time[-displayed_indices:], droneData.gps.alt[-displayed_indices:], label='Altitude', color=colors.drone)
         axsAltitude[1].plot(callbacks.drone_data.time[-displayed_indices:], callbacks.drone_data.z_wanted[-displayed_indices:], label='Wanted Altitude', color="orange")
         axsAltitude[1].set_title("Altitude Drone", fontsize=20)
         axsAltitude[1].set_ylabel("Altitude (m)", fontsize=17)
         axsAltitude[1].set_xlabel("Time (s)", fontsize=17)
+        axsAltitude[1].set_xlim(left=droneData.gps.time[-displayed_indices])
         axsAltitude[1].tick_params(axis='both', labelsize=13)
         axsAltitude[1].legend(fontsize=15)
         axsAltitude[1].grid(True)

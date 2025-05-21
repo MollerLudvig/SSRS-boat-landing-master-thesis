@@ -468,9 +468,28 @@ def tester():
             # Loiter until command recieved
             drone.set_mode("GUIDED")
         
+        
+
+        # add stuff to redis stream if they have not been populated this itteration
+        print('here')
+        if "time" not in drone.data or ("time" in drone.data and drone.data["time"] != timestamp):
+            print("updating drone data")
+            drone.data.update({"time": timestamp,
+                            "xs": 0,
+                            "altitude": drone.altitude,
+                            "z_wanted": cruise_altitude,
+                            "needed_sr": 0,
+                            "wanted_sr": 0,
+                            "actual_sr": drone.vz,
+                            "Gr": Gr})
+            
+            # Send data to redis stream
+            rc.send_message("drone data", drone.data)
+        
         # Flush all messages
         boat.flush_messages()
         drone.flush_messages()
+
 
 def innit_filter(boat: Boat, boat_length):
     # Get initial position of boat
