@@ -39,6 +39,7 @@ class GPSData:
     vy: Optional[List[float]] = None
     vz: Optional[List[float]] = None
     hdg: Optional[List[float]] = None
+    cog: Optional[List[float]] = None
 
 
 @dataclass
@@ -142,7 +143,7 @@ class VehicleData:
                 self.attitude.yaw_speed = list(yaw_speeds)
 
             if gps:
-                times, lats, lons, alts, rel_alts, vxs, vys, vzs, hdgs = zip(*gps)
+                times, lats, lons, alts, rel_alts, vxs, vys, vzs, hdgs, cogs = zip(*gps)
                 self.gps.time = list(times)
                 self.gps.lat = list(lats)
                 self.gps.lon = list(lons)
@@ -152,6 +153,7 @@ class VehicleData:
                 self.gps.vy = list(vys)
                 self.gps.vz = list(vzs)
                 self.gps.hdg = list(hdgs)
+                self.gps.cog = list(cogs)
 
             if acc and ang:
                 # Combining accelerometer and gyroscope data

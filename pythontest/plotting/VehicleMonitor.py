@@ -15,7 +15,7 @@ class VehicleMonitor:
         self.name = name
         self.color = color
         self.start_time =start_time
-        self.save_history = 300
+        self.save_history = 200
 
         self.enableDroneWindow = enableDroneWindow
         self.enableBoatWindow = enableBoatWindow
@@ -24,6 +24,7 @@ class VehicleMonitor:
         self.posHistory = []     # List of (time, x, y, z, vx, vy, vz)
         self.attHistory = []     # List of (time, roll, pitch, yaw)
         self.gpsHistory = []     # List of (time, lat, lon)
+        self.cogHistory = []     # List of (cog)
         self.velHistory = []     # List of (time, x, y, z, vx, vy, vz)
         self.linAccHistory = []  # List of (time, ax, ay, az)
         self.angHistory = []     # List of (time, wx, wy, wz)
@@ -76,7 +77,7 @@ class VehicleMonitor:
         while self.is_connected:
             try:
                 msg = self.conn.recv_match(
-                    type=['LOCAL_POSITION_NED', 'ATTITUDE', 'GLOBAL_POSITION_INT', 'SCALED_IMU', 'WIND', 'SIMSTATE'], 
+                    type=['LOCAL_POSITION_NED', 'ATTITUDE', 'GLOBAL_POSITION_INT', 'SCALED_IMU', 'WIND', 'SIMSTATE', 'GPS_RAW_INT'], 
                     blocking=True, 
                     timeout=1.0
                 )
@@ -115,8 +116,19 @@ class VehicleMonitor:
                         vy = msg.vy / 100
                         vz = msg.vz / 100
                         hdg = msg.hdg / 100
-                        self.gpsHistory.append((GPS_time, lat, lon, alt, relative_alt, vx, vy, vz, hdg))
+
+                        if self.cogHistory:
+                            cog = self.cogHistory[-1]
+                        else:
+                            cog = float('inf')
+
+                        self.gpsHistory.append((GPS_time, lat, lon, alt, relative_alt, vx, vy, vz, hdg, cog))
                         self.gpsHistory = self.gpsHistory[-self.save_history:]
+
+                    # elif msg.get_type() == 'GPS_RAW_INT':
+                    #     cog = msg.cog / 100
+                    #     self.cogHistory.append(cog)
+
                     elif msg.get_type() == 'SCALED_IMU':
                         imu_time = time.time() - self.start_time
                         ax = msg.xacc / 1000
