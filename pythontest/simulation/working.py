@@ -33,10 +33,10 @@ def tester():
 
     verbose = True
     use_filter = False
-    fluct_boat_movement = False
+    fluct_boat_movement = True
     fluct_boat_alt = False
     fluct_drone_throttle = False
-    maneuver_boat = True
+    maneuver_boat = False
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
@@ -47,17 +47,17 @@ def tester():
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
     impact_speed = 2
-    P2_lookahead = 20
+    P2_lookahead = 30
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 30 # Heading in degrees
+    boat_movement_fluctuation = 10 # Heading in degrees, 10 for landing, 30 for follow
     boat_alt_fluctuation = 4 # Meters
     throttle_fluct = 200
     turning_fluctuation_angle = 40 # Degrees
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
-    boat_length = 4 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
+    boat_length = 2 # In meters, Eyeballed length from drone that is driving boat to rear deck of boat
     base_stall_speed = 12
     desired_boat_direction = 0
     desired_boat_altitude = 3
