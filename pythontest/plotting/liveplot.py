@@ -74,14 +74,14 @@ boatData = VehicleData(boat)
 # Create figures and axes based on configuration
 if enablePositionWindow:
     if plotLocalPosition:
-        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Local Position View", constrained_layout=True)
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(10, 8), num="Local Position View", constrained_layout=True)
         figGlobal.suptitle("Local Position (NED)", fontsize=25)
     else:
-        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(8, 6), num="Global Position View", constrained_layout=True)
+        figGlobal, axGlobal = plt.subplots(1, 1, figsize=(10, 8), num="Global Position View", constrained_layout=True)
         figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
     if enableBoatTail:
-        figRmsTail, axRmsTail = plt.subplots(1, 1, figsize=(8, 8), num="Distance to aft projection", constrained_layout=True)
+        figRmsTail, axRmsTail = plt.subplots(1, 1, figsize=(8, 5), num="Distance to aft projection", constrained_layout=True)
         # figRmsTail.suptitle("Distance to aft projection", fontsize=25)
 
 if enableDroneAttitudeWindow:
@@ -105,12 +105,12 @@ if enableRelativeVelocityWindow:
     figRelVel.suptitle(f"Drone-Boat Relative Velocity", fontsize=14)
 
 if enableWindWindow:
-    figWind, axsWind = plt.subplots(2, 1, figsize=(8, 8), num="Wind Data", constrained_layout=True)
-    figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
+    figWind, axsWind = plt.subplots(2, 1, figsize=(8, 5), num="Wind Data", constrained_layout=True)
+    # figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
 if enableCollisionWindow:
-    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection", constrained_layout=True)
-    figCollision.suptitle(f"Collision Detection", fontsize=20)
+    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection", constrained_layout=False)
+    # figCollision.suptitle(f"Collision Detection", fontsize=20)
 
 if enableDistToP:
     figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
@@ -668,19 +668,23 @@ def update_plot(_):
         axsWind[0].clear()
         if droneData.wind.speed:  # Assuming wind data comes from boat
             axsWind[0].plot(droneData.wind.time[-displayed_indices:], droneData.wind.speed[-displayed_indices:], label='Wind Speed', color='cyan')
-            axsWind[0].set_title("Wind Speed")
-            axsWind[0].set_ylabel("m/s")
-            axsWind[0].legend()
+            axsWind[0].set_title("Wind Speed", fontsize=20)
+            axsWind[0].set_ylabel("m/s", fontsize=17)
+            axsWind[0].set_xlabel("Time (s)", fontsize=17)
+            axsWind[0].tick_params(axis='both', labelsize=13)
+            axsWind[0].legend(fontsize=15)
             axsWind[0].grid(True)
+
         
         # Wind direction
         axsWind[1].clear()
         if droneData.wind.direction:
             axsWind[1].plot(droneData.wind.time[-displayed_indices:], droneData.wind.direction[-displayed_indices:], label='Wind Direction', color='magenta')
-            axsWind[1].set_title("Wind Direction")
-            axsWind[1].set_ylabel("Degrees")
-            axsWind[1].set_xlabel("Time (s)")
-            axsWind[1].legend()
+            axsWind[1].set_title("Wind Direction", fontsize=20)
+            axsWind[1].set_ylabel("Degrees", fontsize=17)
+            axsWind[1].set_xlabel("Time (s)", fontsize=17)
+            axsWind[1].tick_params(axis='both', labelsize=13)
+            axsWind[1].legend(fontsize=15)
             axsWind[1].grid(True)
 
     # 8. Update Collision Window
@@ -826,6 +830,8 @@ try:
 except KeyboardInterrupt:
     # Save plots if requested
     print("Exiting...")
+    plt.pause(0.1)
+    print("Saving plots...")
 
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
@@ -843,6 +849,12 @@ except KeyboardInterrupt:
             figRelVel.savefig(f"plots/relative_velocity_{timestamp}.png")
         if enableWindWindow:
             figWind.savefig(f"plots/wind_data_{timestamp}.png")
+        if enableCollisionWindow:
+            figCollision.savefig(f"plots/collision_data_{timestamp}.png")
+        if enableDistToP:
+            figDistToP.savefig(f"plots/dist_to_p_{timestamp}.png")
+        if enableBoatTail:
+            figRmsTail.savefig(f"plots/boat_tail_{timestamp}.png")
         print("Plots saved.")
     else:
         print("No plots saved")    
