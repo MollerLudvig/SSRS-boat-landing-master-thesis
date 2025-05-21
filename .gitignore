@@ -42,6 +42,10 @@ req.txt
 **.tlog
 **.tlog.raw
 
+# Ingnore images
+**.png
+**.jpg
+
 # simulation/
 # .txt
 

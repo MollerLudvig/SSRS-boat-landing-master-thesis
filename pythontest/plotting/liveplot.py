@@ -16,7 +16,7 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enablePositionWindow = True
+enablePositionWindow = False
 plotLocalPosition = True
 enableBoatTail = True
 
@@ -27,14 +27,15 @@ enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 
-enableWindWindow = True
+enableWindWindow = False
 
 enableCollisionWindow = False
 
 enableDistToP = True
 
+enableAltitude = True
 
-savePlots = True
+savePlots = False
 
 displayed_indices = 150
 
@@ -116,7 +117,9 @@ if enableDistToP:
     figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
     figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
-
+if enableAltitude:
+    figAltitude, axsAltitude = plt.subplots(2, 1, figsize=(8, 5), num="Altitude", constrained_layout=True)
+    # figAltitude.suptitle(f"Altitude", fontsize=14)
 
 def get_vector_magnitude(x, y, z=0):
     return np.sqrt(x**2 + y**2 + z**2)
@@ -352,7 +355,7 @@ def update_plot(_):
 
     # Check if landed ( or maby rather distance to get collision data)
     if enableCollisionWindow:
-        is_landed(collision_data, boatData, droneData, landing_threshold = [2, 1, 1], 
+        is_landed(collision_data, boatData, droneData, landing_threshold = [4, 2, 2], 
                   offset_transform = [3.5, 0.0, 1.75], max_time_delta = 0.09)
 
     # 1. Update Global Position Window
@@ -816,6 +819,28 @@ def update_plot(_):
             axsDistToP[2].legend()
             axsDistToP[2].grid(True)
 
+    if enableAltitude:
+        # Altitude boat
+        axsAltitude[0].clear()
+        axsAltitude[0].plot(boatData.position.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
+        axsAltitude[0].set_title("Altitude Boat", fontsize=20)
+        axsAltitude[0].set_ylabel("Altitude (m)", fontsize=17)
+        axsAltitude[0].set_xlabel("Time (s)", fontsize=17)
+        axsAltitude[0].tick_params(axis='both', labelsize=13)
+        axsAltitude[0].legend(fontsize=15)
+        axsAltitude[0].grid(True)
+        # Altitude drone
+        axsAltitude[1].clear()
+        axsAltitude[1].plot(droneData.position.time[-displayed_indices:], droneData.gps.alt[-displayed_indices:], label='Altitude', color=colors.drone)
+        axsAltitude[1].plot(callbacks.drone_data.time[-displayed_indices:], callbacks.drone_data.z_wanted[-displayed_indices:], label='Wanted Altitude', color="orange")
+        axsAltitude[1].set_title("Altitude Drone", fontsize=20)
+        axsAltitude[1].set_ylabel("Altitude (m)", fontsize=17)
+        axsAltitude[1].set_xlabel("Time (s)", fontsize=17)
+        axsAltitude[1].tick_params(axis='both', labelsize=13)
+        axsAltitude[1].legend(fontsize=15)
+        axsAltitude[1].grid(True)
+        
+
 
 # Show all plots non-blocking
 plt.tight_layout()
@@ -830,7 +855,7 @@ try:
 except KeyboardInterrupt:
     # Save plots if requested
     print("Exiting...")
-    plt.pause(0.1)
+    plt.pause(0.5)
     print("Saving plots...")
 
     if savePlots:
