@@ -33,17 +33,18 @@ def tester():
 
     verbose = True
     use_filter = False
-    fluct_boat_movement = True
+    fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
-    maneuver_boat = True
+    maneuver_boat = False
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
     needed_Gr = 1/20 # Glide ratio
-    descent_lookahead = 4
+    descent_lookahead = 0.5
+    descent_lookahead_start = 4
     aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
-    altitude_error_gain = 0.2
+    altitude_error_gain = 0.4
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
     impact_speed = 2
@@ -296,7 +297,7 @@ def tester():
             print("\n")
 
             # If drone is behind P2 + lookahead it should just keep flying towards the boat at cruise_altitude
-            if (drone_distance_to_boat > P2_distance + descent_lookahead) and (not started_descent):
+            if (drone_distance_to_boat > P2_distance + descent_lookahead_start) and (not started_descent):
                 boat.set_speed(desired_boat_speed)
 
                 print(f"P2 distance: {P2_distance}")
@@ -356,13 +357,13 @@ def tester():
 
                 # Calculate altitude error and a sink rate correction
                 # Can use z_wanted_lh to calculate error if faster response is needed
-                altitude_error = drone.altitude - z_wanted
+                altitude_error = drone.altitude - z_wanted_lh
                 sink_rate_correction = altitude_error*altitude_error_gain
                 needed_sink_rate = wanted_sink_rate + sink_rate_correction
 
                 # Set sink rate of drone according to wanted sink rate and error correction
-                drone.set_parameter("TECS_SINK_MIN", needed_sink_rate) # Default: 2.0
-                drone.set_parameter("TECS_SINK_MAX", needed_sink_rate) # Default: 5.0
+                drone.set_parameter("TECS_SINK_MIN", needed_sink_rate - 0.05) # Default: 2.0
+                drone.set_parameter("TECS_SINK_MAX", needed_sink_rate + 0.05) # Default: 5.0
 
                 print(f"z wanted: {z_wanted}")
                 print(f"Drone speed: {drone.speed}")

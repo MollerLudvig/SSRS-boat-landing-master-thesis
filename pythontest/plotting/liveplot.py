@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import os
 from matplotlib.ticker import FormatStrFormatter
 # from pymavlink import mavutil
 import time
@@ -16,7 +17,7 @@ from collission import ColissionData, is_landed
 Simulation = True
 
 # Configure window display options
-enablePositionWindow = False
+enablePositionWindow = True
 plotLocalPosition = True
 enableBoatTail = True
 
@@ -27,15 +28,15 @@ enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 
-enableWindWindow = False
+enableWindWindow = True
 
-enableCollisionWindow = False
+enableCollisionWindow = True
 
-enableDistToP = True
+enableDistToP = False
 
 enableAltitude = True
 
-savePlots = False
+savePlots = True
 
 displayed_indices = 150
 
@@ -356,7 +357,7 @@ def update_plot(_):
     # Check if landed ( or maby rather distance to get collision data)
     if enableCollisionWindow:
         is_landed(collision_data, boatData, droneData, landing_threshold = [4, 2, 2], 
-                  offset_transform = [3.5, 0.0, 1.75], max_time_delta = 0.09)
+                  offset_transform = [2, 0.0, 0.5], max_time_delta = 0.09)
 
     # 1. Update Global Position Window
     if enablePositionWindow:
@@ -836,7 +837,8 @@ def update_plot(_):
         axsAltitude[1].set_title("Altitude Drone", fontsize=20)
         axsAltitude[1].set_ylabel("Altitude (m)", fontsize=17)
         axsAltitude[1].set_xlabel("Time (s)", fontsize=17)
-        axsAltitude[1].set_xlim(left=droneData.gps.time[-displayed_indices])
+        if len (droneData.gps.time) > displayed_indices:
+            axsAltitude[1].set_xlim(left=droneData.gps.time[-displayed_indices])
         axsAltitude[1].tick_params(axis='both', labelsize=13)
         axsAltitude[1].legend(fontsize=15)
         axsAltitude[1].grid(True)
@@ -861,30 +863,39 @@ except KeyboardInterrupt:
 
     if savePlots:
         timestamp = time.strftime('%Y%m%d_%H%M%S')
+        saveDir = os.path.join("plots", timestamp)
+        os.makedirs(saveDir, exist_ok=True)
+
+        # Create an empty distance.txt file
+        open(os.path.join(saveDir, "distance.txt"), 'w').close()
+
         if enablePositionWindow:
-            figGlobal.savefig(f"plots/global_position_{timestamp}.png")
+            figGlobal.savefig(os.path.join(saveDir, "global_position.png"))
         if enableDroneAttitudeWindow:
-            figDroneAtt.savefig(f"plots/drone_attitude_{timestamp}.png")
+            figDroneAtt.savefig(os.path.join(saveDir, "drone_attitude.png"))
         if enableBoatAttitudeWindow:
-            figBoatAtt.savefig(f"plots/boat_attitude_{timestamp}.png")
+            figBoatAtt.savefig(os.path.join(saveDir, "boat_attitude.png"))
         if enableDroneVelocityWindow:
-            figDroneVel.savefig(f"plots/drone_velocity_{timestamp}.png")
+            figDroneVel.savefig(os.path.join(saveDir, "drone_velocity.png"))
         if enableBoatVelocityWindow:
-            figBoatVel.savefig(f"plots/boat_velocity_{timestamp}.png")
+            figBoatVel.savefig(os.path.join(saveDir, "boat_velocity.png"))
         if enableRelativeVelocityWindow:
-            figRelVel.savefig(f"plots/relative_velocity_{timestamp}.png")
+            figRelVel.savefig(os.path.join(saveDir, "relative_velocity.png"))
         if enableWindWindow:
-            figWind.savefig(f"plots/wind_data_{timestamp}.png")
+            figWind.savefig(os.path.join(saveDir, "wind_data.png"))
         if enableCollisionWindow:
-            figCollision.savefig(f"plots/collision_data_{timestamp}.png")
+            figCollision.savefig(os.path.join(saveDir, "collision_data.png"))
         if enableDistToP:
-            figDistToP.savefig(f"plots/dist_to_p_{timestamp}.png")
+            figDistToP.savefig(os.path.join(saveDir, "dist_to_p.png"))
         if enableBoatTail:
-            figRmsTail.savefig(f"plots/boat_tail_{timestamp}.png")
-        print("Plots saved.")
+            figRmsTail.savefig(os.path.join(saveDir, "boat_tail.png"))
+        if enableAltitude:
+            figAltitude.savefig(os.path.join(saveDir, "altitude.png"))
+
+        print(f"Plots saved in '{saveDir}'")
     else:
         print("No plots saved")    
+
     # Close all plot windows
     plt.close('all')
     exit(0)
-
