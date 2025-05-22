@@ -21,14 +21,14 @@ enablePositionWindow = True
 plotLocalPosition = True
 enableBoatTail = True
 
-enableDroneAttitudeWindow = False
-enableBoatAttitudeWindow = False
+enableDroneAttitudeWindow = True
+enableBoatAttitudeWindow = True
 
 enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 
-enableWindWindow = True
+enableWindWindow = False
 
 enableCollisionWindow = True
 
@@ -386,10 +386,11 @@ def update_plot(_):
                                label='Pitch', color='green', alpha=0.7)
             axsDroneAtt[0].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.yaw[-displayed_indices:], 
                                label='Yaw', color='blue', alpha=0.7)
-        axsDroneAtt[0].set_ylabel("Degrees")
-        axsDroneAtt[0].set_title("Attitude")
-        axsDroneAtt[0].legend()
+        axsDroneAtt[0].set_ylabel("Degrees", fontsize=17)
+        axsDroneAtt[0].set_title("Attitude", fontsize=20)
+        axsDroneAtt[0].legend(fontsize=15)
         axsDroneAtt[0].grid(True)
+        axsDroneAtt[0].tick_params(axis='both', labelsize=13)
         
         # Angular rates plot
         axsDroneAtt[1].clear()
@@ -407,10 +408,11 @@ def update_plot(_):
                                label='Pitch rate', color='green', alpha=0.7)
             axsDroneAtt[1].plot(droneData.attitude.time[-displayed_indices:], droneData.attitude.yaw_speed[-displayed_indices:], 
                                label='Yaw rate', color='blue', alpha=0.7)
-        axsDroneAtt[1].set_ylabel("Degrees/sec")
-        axsDroneAtt[1].set_title("Angular Rates")
-        axsDroneAtt[1].legend()
+        axsDroneAtt[1].set_ylabel("Degrees/sec", fontsize=17)
+        axsDroneAtt[1].set_title("Angular Rates", fontsize=20)
+        axsDroneAtt[1].legend(fontsize=15)
         axsDroneAtt[1].grid(True)
+        axsDroneAtt[1].tick_params(axis='both', labelsize=13)
         
         # Accelerations plot
         axsDroneAtt[2].clear()
@@ -428,11 +430,12 @@ def update_plot(_):
                                label='Y Accel', color='green', alpha=0.7)
             axsDroneAtt[2].plot(droneData.imu.time[-displayed_indices:], droneData.imu.az[-displayed_indices:], 
                                label='Z Accel', color='blue', alpha=0.7)
-        axsDroneAtt[2].set_ylabel("m/s²")
-        axsDroneAtt[2].set_title("Accelerations")
-        axsDroneAtt[2].set_xlabel("Time (s)")
-        axsDroneAtt[2].legend()
+        axsDroneAtt[2].set_ylabel("m/s²", fontsize=17)
+        axsDroneAtt[2].set_title("Accelerations", fontsize=20)
+        axsDroneAtt[2].set_xlabel("Time (s)", fontsize=17)
+        axsDroneAtt[2].legend(fontsize=15)
         axsDroneAtt[2].grid(True)
+        axsDroneAtt[2].tick_params(axis='both', labelsize=13)
             
     # 3. Update Boat Attitude Window
     if enableBoatAttitudeWindow and len(axsBoatAtt) == 3:
@@ -452,10 +455,11 @@ def update_plot(_):
                               label='Pitch', color='green', alpha=0.7)
             axsBoatAtt[0].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.yaw[-displayed_indices:], 
                               label='Yaw', color='blue', alpha=0.7)
-        axsBoatAtt[0].set_ylabel("Degrees")
-        axsBoatAtt[0].set_title("Attitude")
-        axsBoatAtt[0].legend()
+        axsBoatAtt[0].set_ylabel("Degrees", fontsize=17)
+        axsBoatAtt[0].set_title("Attitude", fontsize=20)
+        axsBoatAtt[0].legend(fontsize=15)
         axsBoatAtt[0].grid(True)
+        axsBoatAtt[0].tick_params(axis='both', labelsize=13)
         
         # Angular rates plot
         axsBoatAtt[1].clear()
@@ -473,10 +477,11 @@ def update_plot(_):
                               label='Pitch rate', color='green', alpha=0.7)
             axsBoatAtt[1].plot(boatData.attitude.time[-displayed_indices:], boatData.attitude.yaw_speed[-displayed_indices:], 
                               label='Yaw rate', color='blue', alpha=0.7)
-        axsBoatAtt[1].set_ylabel("Degrees/sec")
-        axsBoatAtt[1].set_title("Angular Rates")
-        axsBoatAtt[1].legend()
+        axsBoatAtt[1].set_ylabel("Degrees/sec", fontsize=17)
+        axsBoatAtt[1].set_title("Angular Rates", fontsize=20)
+        axsBoatAtt[1].legend(fontsize=15)
         axsBoatAtt[1].grid(True)
+        axsBoatAtt[1].tick_params(axis='both', labelsize=13)
         
         # Accelerations plot
         axsBoatAtt[2].clear()
@@ -494,11 +499,12 @@ def update_plot(_):
                               label='Y Accel', color='green', alpha=0.7)
             axsBoatAtt[2].plot(boatData.imu.time[-displayed_indices:], boatData.imu.az[-displayed_indices:], 
                               label='Z Accel', color='blue', alpha=0.7)
-        axsBoatAtt[2].set_ylabel("m/s²")
-        axsBoatAtt[2].set_title("Accelerations")
-        axsBoatAtt[2].set_xlabel("Time (s)")
-        axsBoatAtt[2].legend()
+        axsBoatAtt[2].set_ylabel("m/s²", fontsize=17)
+        axsBoatAtt[2].set_title("Accelerations", fontsize=20)
+        axsBoatAtt[2].set_xlabel("Time (s)", fontsize=17)
+        axsBoatAtt[2].legend(fontsize=15)
         axsBoatAtt[2].grid(True)
+        axsBoatAtt[2].tick_params(axis='both', labelsize=13)
     
     # 4. Update Drone Velocity Window
     if enableDroneVelocityWindow and len(axsDroneVel) == 3:
@@ -756,7 +762,7 @@ def update_plot(_):
         axsCollision[2, 0].plot(collision_data.delta_time_timestamp[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
         axsCollision[2, 0].set_title("Delta Time measurments", fontsize=20)
         axsCollision[2, 0].set_ylabel("Time (s)", fontsize=17)
-        axsCollision[2, 0].set_xlabel("Timesteps", fontsize=17)
+        axsCollision[2, 0].set_xlabel("Timestamp(s)", fontsize=17)
         axsCollision[2, 0].tick_params(axis='both', labelsize=13)
 
         # Mask out none collision timepoints in distance data
@@ -774,6 +780,7 @@ def update_plot(_):
                 axsCollision[2, 1].axvline(x=t, color='black', linestyle='--', label=label)
             axsCollision[2, 1].set_title("Collision distance", fontsize=20)
             axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=17)
+            axsCollision[2, 1].set_xlabel("Timestamp(s)", fontsize=17)
             axsCollision[2, 1].tick_params(axis='both', labelsize=13)
             axsCollision[2, 1].legend(fontsize=15)
             axsCollision[2, 1].grid(True)
@@ -826,7 +833,6 @@ def update_plot(_):
         axsAltitude[0].plot(boatData.gps.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
         axsAltitude[0].set_title("Altitude Boat", fontsize=20)
         axsAltitude[0].set_ylabel("Altitude (m)", fontsize=17)
-        axsAltitude[0].set_xlabel("Time (s)", fontsize=17)
         axsAltitude[0].tick_params(axis='both', labelsize=13)
         axsAltitude[0].legend(fontsize=15)
         axsAltitude[0].grid(True)
