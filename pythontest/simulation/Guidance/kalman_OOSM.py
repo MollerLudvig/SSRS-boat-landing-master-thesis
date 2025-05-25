@@ -90,16 +90,16 @@ class KalmanFilterXY:
 
 
         # Get h and H based on the measurement type 
-            if z.shape[0] == 2:
-                # Camera measurement
-                H = self._get_H_Camera(extra_states['drone_heading_rad'])
-                h = self._get_h_Camera(extra_states['drone_heading_rad'], self.x[0][0], self.x[1][0], extra_states['drone_N'], extra_states['drone_E'])
-            elif z.shape[0] == 5:
-                # AIS measurement
-                H = self._get_H_AIS()
-                h = self._get_h_AIS()
-            else:
-                raise ValueError(f"Unsupported measurement shape: {z.shape}. Expected (2,1) for camera or (5,1) for AIS.")
+        if z.shape[0] == 2:
+            # Camera measurement
+            H = self._get_H_Camera(extra_states['drone_heading_rad'])
+            h = self._get_h_Camera(extra_states['drone_heading_rad'], self.x[0][0], self.x[1][0], extra_states['drone_N'], extra_states['drone_E'])
+        elif z.shape[0] == 5:
+            # AIS measurement
+            H = self._get_H_AIS()
+            h = self._get_h_AIS()
+        else:
+            raise ValueError(f"Unsupported measurement shape: {z.shape}. Expected (2,1) for camera or (5,1) for AIS.")
 
 
         # Calculate innovation
@@ -364,31 +364,47 @@ class KalmanFilterXY:
         self._update_EKF(z, R, timestamp)
 
     def _get_h_AIS(self):
-        """Get the measurement function for AIS measurements."""
-        h = np.zeros((5, 1))
-        h[0][0] = self.x[0][0] # N
-        h[1][0] = self.x[1][0] # E
-        h[2][0] = self.x[2][0] # heading (yaw)
-        h[3][0] = np.arctan2(self.x[4][0], self.x[3][0])  # course from velocity components
-        h[4][0] = np.sqrt(self.x[3][0]**2 + self.x[4][0]**2)  # velocity magnitude
+        """Get the measurement function for AIS measurements, with v always negated."""
+        u = self.x[3,0]
+        v = self.x[4,0]
+
+        course = np.arctan2(v, u)
+        speed  = np.hypot(u, v)
+
+        h = np.zeros((5,1))
+        h[0,0] = self.x[0,0]   # N
+        h[1,0] = self.x[1,0]   # E
+        h[2,0] = self.x[2,0]   # heading (psi)
+        h[3,0] = self.x[2,0] + course  # course (psi + course)
+        h[4,0] = speed
         return h
     
+
     def _get_H_AIS(self):
-        """Get jacobian of the measurement function for AIS measurements."""
+        """Get Jacobian of AIS measurement model h_AIS(x)."""
+        u = self.x[3, 0]
+        v = self.x[4, 0]
+
+        denom = u**2 + v**2 + 1e-6  # Avoid divide-by-zero
+        speed = np.sqrt(denom)
+
         H = np.zeros((5, self.n))
-        
-        # N
-        H[0][0] = 1
-        # E
-        H[1][1] = 1
-        # heading (yaw)
-        H[2][2] = 1
-        # course (from velocity components)
-        H[3][3] = -self.x[4][0] / (self.x[3][0]**2 + self.x[4][0]**2 + 1e-6)  # Avoid division by zero
-        H[3][4] = self.x[3][0] / (self.x[3][0]**2 + self.x[4][0]**2 + 1e-6)  
-        # velocity magnitude
-        H[4][3] = self.x[3][0] / np.sqrt(self.x[3][0]**2 + self.x[4][0]**2 + 1e-6) # Avoid division by zero
-        H[4][4] = self.x[4][0] / np.sqrt(self.x[3][0]**2 + self.x[4][0]**2 + 1e-6)
+
+        # ∂N/∂x, ∂E/∂y, ∂ψ/∂ψ
+        H[0, 0] = 1  # ∂/∂N
+        H[1, 1] = 1  # ∂/∂E
+        H[2, 2] = 1  # ∂/∂ψ
+
+        # ∂ε/∂ψ, ∂ε/∂u, ∂ε/∂v
+        # ε = ψ + atan2(v, u)
+        H[3, 2] = 1
+        H[3, 3] = -v / denom  # ∂/∂u of atan2(v, u)
+        H[3, 4] = u / denom   # ∂/∂v of atan2(v, u)
+
+        # ∂V/∂u, ∂V/∂v
+        # V = sqrt(u^2 + v^2)
+        H[4, 3] = u / speed
+        H[4, 4] = v / speed
 
         return H
 

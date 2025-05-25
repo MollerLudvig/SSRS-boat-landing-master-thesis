@@ -13,16 +13,16 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
-csv_file = "simulation/Guidance/data_short2_modded.csv"
+# csv_file = "simulation/Guidance/data_short2_modded.csv"
 # csv_file = "data_short_short.csv"
-# csv_file = "data_short2_modded.csv"
-# csv_file = "data_short_OOSM.csv"
+# csv_file = "data_short2.csv"
+csv_file = "data_short_OOSM.csv"
 # csv_file = "ssrs-josephine_1.csv"
 
 df = pd.read_csv(csv_file)
 
 # Get initial reference position
-lat0, lon0, v0, psi0, time0 = df.iloc[0]["lat"], df.iloc[0]["lon"], df.iloc[0]["speed[m/s]"], df.iloc[0]["course"], df.iloc[0]["timestamp_unix"]
+lat0, lon0, v0, psi0, time0 = df.iloc[0]["lat"], df.iloc[0]["lon"], df.iloc[0]["speed[m/s]"], df.iloc[0]["heading"], df.iloc[0]["timestamp_unix"]
 
 lastTime = df.iloc[-1]["timestamp_unix"]
 
@@ -58,10 +58,12 @@ u_vel = []
 v_vel = []
 velocity = []
 heading = []
-velocity_heading = []
+course = []
 yawrate = []
 timestamps = []
 delta_time = []
+def wrap_to_180(angle_deg):
+    return (angle_deg + 180) % 360 - 180
 
 while True:
     # Update with all AIS measurements up to current time t
@@ -113,7 +115,7 @@ while True:
     velocity.append(np.sqrt(u**2 + v**2))
     u_vel.append(u)
     v_vel.append(v)
-    velocity_heading.append(np.rad2deg(np.arctan2(v, u)))
+    course.append(np.rad2deg(np.arctan2(v,u)+kf.x[2, 0]) )
     heading.append(kf.x[2, 0])
     yawrate.append(kf.x[5, 0])
     timestamps.append(t)
@@ -172,10 +174,10 @@ filtered_lats, filtered_lons = zip(*[ned_to_latlon(x[0], x[1], lat0, lon0) for x
 Plot latlons
 """
 plt.figure(figsize=(10, 6))
-plt.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro-', markersize=3, label="Raw AIS Data")
-plt.plot(filtered_lons, filtered_lats, 'bo-', markersize=3, label="Kalman Filtered Path")
-plt.xlabel("Longitude")
-plt.ylabel("Latitude")
+plt.plot(dfPlot["lat"].to_numpy(), dfPlot["lon"].to_numpy(), 'ro-', markersize=3, label="Raw AIS Data")
+plt.plot(filtered_lats, filtered_lons, 'bo-', markersize=3, label="Kalman Filtered Path")
+plt.ylabel("Longitude")
+plt.xlabel("Latitude")
 plt.title("Kalman Filtered Path vs Raw AIS Data")
 plt.legend()
 plt.grid()
@@ -203,10 +205,15 @@ plt.tight_layout()
 """
 Plot filtered heading
 """
+measurd_heading = wrap_to_180(dfPlot["heading"].to_numpy())  # Convert measured heading to radians
+measurd_course = wrap_to_180(dfPlot["course"].to_numpy())  # Convert measured course to radians
 
 plt.figure(figsize=(10, 4))
 plt.plot(timestamps, np.rad2deg(heading), label="Filtered Heading", color="blue")
-plt.plot(dfPlot["timestamp_unix"].to_numpy(), dfPlot["heading"].to_numpy(), label="Measured Heading", color="red", alpha=0.6)
+plt.plot(timestamps, course, label="Filtered Course", color="green", alpha=0.6)
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), measurd_heading, label="Measured Heading", color="red", alpha=0.6)
+plt.plot(dfPlot["timestamp_unix"].to_numpy(), measurd_course, label="Measured Course", color="orange", alpha=0.6)
+plt.plot()
 plt.xlabel("Time [s]")
 plt.ylabel("Heading [deg]")
 plt.title("Heading: Measured vs Kalman Filtered")
@@ -254,3 +261,5 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+
