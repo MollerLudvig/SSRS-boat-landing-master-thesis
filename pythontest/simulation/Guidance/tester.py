@@ -13,9 +13,9 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
-# csv_file = "simulation/Guidance/data_short.csv"
+csv_file = "simulation/Guidance/data_short2_modded.csv"
 # csv_file = "data_short_short.csv"
-csv_file = "data_short2.csv"
+# csv_file = "data_short2_modded.csv"
 # csv_file = "data_short_OOSM.csv"
 # csv_file = "ssrs-josephine_1.csv"
 
@@ -67,26 +67,36 @@ while True:
     # Update with all AIS measurements up to current time t
     while not df.empty and t >= df.iloc[0]["timestamp_unix"]:
 
-        heading_rad = np.radians(df.iloc[0]["heading"])
-        course_rad = np.radians(df.iloc[0]["course"])
+        # heading_rad = np.radians(df.iloc[0]["heading"])
+        # course_rad = np.radians(df.iloc[0]["course"])
 
-        delta_r = course_rad - heading_rad
-        # Normalize delta_r to be within -pi to pi
-        delta_r = (delta_r + np.pi) % (2*np.pi) - np.pi
+        # delta_r = course_rad - heading_rad
+        # # Normalize delta_r to be within -pi to pi
+        # delta_r = (delta_r + np.pi) % (2*np.pi) - np.pi
 
-        u = df.iloc[0]["speed[m/s]"] * np.cos(delta_r)
-        v = df.iloc[0]["speed[m/s]"] * np.sin(delta_r)
+        # u = df.iloc[0]["speed[m/s]"] * np.cos(delta_r)
+        # v = df.iloc[0]["speed[m/s]"] * np.sin(delta_r)
+
+        # z = np.array([
+        #     [df.iloc[0]["lat"]],
+        #     [df.iloc[0]["lon"]],
+        #     [df.iloc[0]["heading"]],
+        #     [u],
+        #     [v]
+        # ])
+
+        # measurment_time = df.iloc[0]["timestamp_unix"]
+        # kf.update_w_latlon(z, measurment_time)
 
         z = np.array([
             [df.iloc[0]["lat"]],
             [df.iloc[0]["lon"]],
-            [df.iloc[0]["heading"]],
-            [u],
-            [v]
+            [df.iloc[0]["heading"]],  # Heading in deg
+            [df.iloc[0]["course"]],  # Course in deg
+            [df.iloc[0]["speed[m/s]"]],  # Speed in m/s
         ])
-
         measurment_time = df.iloc[0]["timestamp_unix"]
-        kf.update_w_latlon(z, measurment_time)
+        kf.update_AIS(z, measurment_time)
 
         df.drop(index=df.index[0], inplace=True)
 
