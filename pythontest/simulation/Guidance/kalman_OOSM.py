@@ -143,9 +143,9 @@ class KalmanFilterXY:
         F = self.compute_jacobian(dt)
 
         # Create process noise covariance Q
-        sigmaA = 0.2 # Acceleration influencing position
-        sigmaAR = 0.02 # Angular acceleration (rad/s²)
-        sigmaJ = 0.1     # Jerk magnitude (m/s³), if modeling ax/ay as slowly changing
+        sigmaA = 0.5 # Acceleration influencing position
+        sigmaAR = 0.05 # Angular acceleration (rad/s²)
+        sigmaJ = 0.5     # Jerk magnitude (m/s³), if modeling ax/ay as slowly changing
         Q = self._create_Q(dt, sigmaA, sigmaAR, sigmaJ)
         # Q = self.compute_q()
         # Q = np.eye(self.n) * self.process_noise_variance
@@ -410,10 +410,10 @@ class KalmanFilterXY:
 
     def _get_R_AIS(self):
         R_AIS = np.zeros((5,5))
-        R_AIS[0][0] = 1  # x
-        R_AIS[1][1] = 1  # y
-        R_AIS[2][2] = 0.1  # heading
-        R_AIS[3][3] = 0.1  # course
+        R_AIS[0][0] = 5  # x
+        R_AIS[1][1] = 5  # y
+        R_AIS[2][2] = 0.05  # heading
+        R_AIS[3][3] = 0.05  # course
         R_AIS[4][4] = 0.1  # velocity
         return R_AIS
 
