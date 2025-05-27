@@ -1,7 +1,6 @@
 import numpy as np
 import time
 from collections import deque
-import bisect
 # from Guidance.coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
 
@@ -41,6 +40,7 @@ class KalmanFilterXY:
             Standard deviation of jerk (m/s³).
 
         State: [x, y, psi, u, v, r, ax, ay]
+
         """
         Q = np.zeros((8, 8))
 
@@ -312,7 +312,7 @@ class KalmanFilterXY:
 
 
 
-    def update_camera(self, z, drone_lat, drone_lon, drone_heading_deg, timestamp, R_camera=None):
+    def update_camera(self, z, timestamp, drone_lat, drone_lon, drone_heading_deg, drone_alt, ship_alt = 0):
         """
         Update the filter with a camera measurement.
         z: np.array of shape (2, 1)
@@ -320,12 +320,14 @@ class KalmanFilterXY:
         - z[1]: East offset (in meters)
         drone_lat: Latitude of the drone (in degrees)
         drone_lon: Longitude of the drone (in degrees)
+        drone_alt: Altitude of the drone (in meters)
+        ship_alt: Altitude of the ship (in meters, default is 0)
         drone_heading_deg: Heading of the drone (or camera, whatever way the x is pointing) (in degrees)
         """
         drone_heading_rad = self.wrap_angle_rad(np.deg2rad(drone_heading_deg))
 
         # Get R_Camera if not provided
-        R = self._get_R_Camera() if R_camera is None else R_camera
+        R = self._get_R_Camera(z[0][0], z[1][0], drone_alt - ship_alt)
 
         # Convert local offset to global NED coordinates
         drone_N, drone_E = latlon_to_ned(drone_lat, drone_lon, self.init_lat, self.init_lon)
@@ -344,7 +346,7 @@ class KalmanFilterXY:
 
 
     # def update_AIS(self, lat, lon, heading_deg, course_deg, velocity, timestamp, R_AIS=None):
-    def update_AIS(self, z, timestamp, R_AIS=None):
+    def update_AIS(self, z, timestamp):
         """
         Update the filter with an AIS measurement.
         z: np.array of shape (5, 1)
@@ -360,7 +362,7 @@ class KalmanFilterXY:
         z[3][0] = self.wrap_angle_rad(np.deg2rad(z[3][0]))  # course in radians
 
         # Get R_AIS if not provided
-        R = self._get_R_AIS() if R_AIS is None else R_AIS
+        R = self._get_R_AIS(z[4][0])
 
         # Insert the measurement into the buffer
         self._insert_measurement(z, R, timestamp)
@@ -412,14 +414,47 @@ class KalmanFilterXY:
 
         return H
 
-    def _get_R_AIS(self):
-        R_AIS = np.zeros((5,5))
-        R_AIS[0][0] = 5  # x
-        R_AIS[1][1] = 5  # y
-        R_AIS[2][2] = 0.05  # heading
-        R_AIS[3][3] = 0.05  # course
-        R_AIS[4][4] = 0.1  # velocity
+    # def _get_R_AIS(self):
+    #     R_AIS = np.zeros((5,5))
+    #     R_AIS[0][0] = 5  # x
+    #     R_AIS[1][1] = 5  # y
+    #     R_AIS[2][2] = 0.05  # heading
+    #     R_AIS[3][3] = 0.05  # course
+    #     R_AIS[4][4] = 0.1  # velocity
+    #     return R_AIS
+    def _get_R_AIS(self, V, sigmaGPS=5.0, dtErr=0.5, sigmaLow=0.05, sigmaHigh=1.0, V0=2.0, zeta=2.0, sigmaV=0.5):
+        """
+        Get the measurement noise covariance matrix for AIS measurements.
+
+        Parameters:
+            V : float
+                AIS-reported speed over ground (used for velocity-dependent uncertainty).
+            sigmaGPS : float
+                Baseline GPS positional error (m).
+            dtErr : float
+                Timestamp rounding uncertainty (s).
+            sigmaLow : float
+                Minimum angular error (rad).
+            sigmaHigh : float
+                Maximum angular error (rad).
+            V0 : float
+                Midpoint velocity for sigmoid curve.
+            zeta : float
+                Slope of the sigmoid curve.
+            sigmaV : float
+                Standard deviation of velocity measurement (m/s).
+        """
+        sigmaXY = sigmaGPS + dtErr * V
+        sigmaDeg = sigmaLow + (sigmaHigh - sigmaLow) / (1 + np.exp(-zeta * (V0 - V)))
+
+        R_AIS = np.zeros((5, 5))
+        R_AIS[0, 0] = sigmaXY ** 2       # N
+        R_AIS[1, 1] = sigmaXY ** 2       # E
+        R_AIS[2, 2] = sigmaDeg ** 2      # Heading (yaw)
+        R_AIS[3, 3] = sigmaDeg ** 2      # Course
+        R_AIS[4, 4] = sigmaV ** 2        # Velocity magnitude
         return R_AIS
+
 
     
     def _get_h_Camera(self, drone_heading_rad, boat_N, boat_E, drone_N, drone_E):
@@ -444,10 +479,29 @@ class KalmanFilterXY:
 
         return H
         
-    def _get_R_Camera(self):
-        """Get the measurement noise covariance matrix for camera measurements."""
-        R_camera = np.eye(2) * 0.01
+    # def _get_R_Camera(self):
+    #     """Get the measurement noise covariance matrix for camera measurements."""
+    #     R_camera = np.eye(2) * 0.01
+    #     return R_camera
+    def _get_R_Camera(self, deltaX, deltaY, deltaZ, sigmaX=0.05, sigmaAlpha=0.01):
+        """
+        Get the measurement noise covariance matrix for camera-based relative measurements.
+
+        Parameters:
+            deltaX, deltaY, deltaZ : float
+                Relative position components from drone to vessel (in meters).
+            sigmaX : float
+                Scaling factor for forward distance error.
+            sigmaAlpha : float
+                Scaling factor for lateral angular error.
+        """
+        d = np.sqrt(deltaX**2 + deltaY**2 + deltaZ**2)
+
+        R_camera = np.zeros((2, 2))
+        R_camera[0, 0] = (sigmaX * d) ** 2       # Forward error
+        R_camera[1, 1] = (sigmaAlpha * d) ** 2   # Lateral error
         return R_camera
+
     
 
 
