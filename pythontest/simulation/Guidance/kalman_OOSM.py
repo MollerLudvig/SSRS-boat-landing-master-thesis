@@ -31,12 +31,16 @@ class KalmanFilterXY:
         """
         Create 8×8 process noise covariance matrix Q.
 
+        dt : float
+            Time step Δt in seconds.
+        sigmaA : float
+            Standard deviation of linear acceleration (m/s²).
+        sigmaAR : float
+            Standard deviation of yaw acceleration (rad/s²).
+        sigmaJ : float
+            Standard deviation of jerk (m/s³).
+
         State: [x, y, psi, u, v, r, ax, ay]
-        - x, y: position
-        - psi: heading (yaw)
-        - u, v: velocity
-        - r: yaw rate
-        - ax, ay: linear accelerations (now state variables)
         """
         Q = np.zeros((8, 8))
 
