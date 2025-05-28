@@ -24,9 +24,9 @@ enableBoatTail = True
 enableDroneAttitudeWindow = True
 enableBoatAttitudeWindow = True
 
-enableDroneVelocityWindow = True
-enableBoatVelocityWindow = True
-enableRelativeVelocityWindow = True
+enableDroneVelocityWindow = False
+enableBoatVelocityWindow = False
+enableRelativeVelocityWindow = False
 
 enableWindWindow = False
 
@@ -509,42 +509,40 @@ def update_plot(_):
     # 4. Update Drone Velocity Window
     if enableDroneVelocityWindow and len(axsDroneVel) == 3:
         # X velocity
-        axsDroneVel[1].clear()
-        # if droneData.simulation.ve:
-        #     axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
-        #                        label='East Velocity (SIM)', color='green')
-        if droneData.gps.vy:
-            axsDroneVel[1].plot(droneData.gps.time[-displayed_indices:], -np.array(droneData.gps.vy[-displayed_indices:]), 
-                               label='X Velocity', color='green', alpha=1)
-        axsDroneVel[1].set_ylabel("m/s")
-        axsDroneVel[1].set_title("X Velocity Drone local frame")
-        axsDroneVel[1].set_xlabel("Time (s)")
-        axsDroneVel[1].legend()
-        axsDroneVel[1].grid(True)
-        
-        # Y velocity
         axsDroneVel[0].clear()
         # if droneData.simulation.vn:
         #     axsDroneVel[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vn[-displayed_indices:], 
         #                        label='North Velocity (SIM)', color='red')
-        if droneData.gps.vx:
-            axsDroneVel[0].plot(droneData.gps.time[-displayed_indices:], -np.array(droneData.gps.vx[-displayed_indices:]), 
-                               label='Y Velocity', color='red', alpha=1)
+        if droneData.position.vx:
+            axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], droneData.position.vx[-displayed_indices:], 
+                               label='X Velocity', color='red', alpha=1)
         axsDroneVel[0].set_ylabel("m/s")
-        axsDroneVel[0].set_title("Y Velocity Drone local frame")
+        axsDroneVel[0].set_title("X Velocity Drone local frame")
         axsDroneVel[0].set_xlabel("Time (s)")
         axsDroneVel[0].legend()
         axsDroneVel[0].grid(True)
         
-        
+        # Y velocity
+        axsDroneVel[1].clear()
+        # if droneData.simulation.ve:
+        #     axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
+        #                        label='East Velocity (SIM)', color='green')
+        if droneData.position.vy:
+            axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], droneData.position.vy[-displayed_indices:], 
+                               label='Y Velocity', color='green', alpha=1)
+        axsDroneVel[1].set_ylabel("m/s")
+        axsDroneVel[1].set_title("Y Velocity Drone local frame")
+        axsDroneVel[1].set_xlabel("Time (s)")
+        axsDroneVel[1].legend()
+        axsDroneVel[1].grid(True)
         
         # Z velocity
         axsDroneVel[2].clear()
         # if droneData.simulation.vd:
         #     axsDroneVel[2].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vd[-displayed_indices:], 
         #                        label='Down Velocity (SIM)', color='blue')
-        if droneData.gps.vz:
-            axsDroneVel[2].plot(droneData.gps.time[-displayed_indices:], -np.array(droneData.gps.vz[-displayed_indices:]), 
+        if droneData.position.vz:
+            axsDroneVel[2].plot(droneData.position.time[-displayed_indices:], droneData.position.vz[-displayed_indices:], 
                                label='Z Velocity', color='blue', alpha=1)
         axsDroneVel[2].set_ylabel("m/s")
         axsDroneVel[2].set_xlabel("Time (s)")
@@ -559,8 +557,8 @@ def update_plot(_):
         # if boatData.simulation.vn:
         #     axsBoatVel[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vn[-displayed_indices:], 
         #                       label='North Velocity (SIM)', color='red')
-        if boatData.gps.vy:
-            axsBoatVel[0].plot(boatData.gps.time[-displayed_indices:], -np.array(boatData.gps.vy[-displayed_indices:]), 
+        if boatData.position.vx:
+            axsBoatVel[0].plot(boatData.position.time[-displayed_indices:], boatData.position.vx[-displayed_indices:], 
                               label='X Velocity', color='red', alpha=1)
         axsBoatVel[0].set_ylabel("m/s")
         axsBoatVel[0].set_title("X Velocity Boat local frame")
@@ -573,8 +571,8 @@ def update_plot(_):
         # if boatData.simulation.ve:
         #     axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
         #                       label='East Velocity (SIM)', color='green')
-        if boatData.gps.vx:
-            axsBoatVel[1].plot(boatData.gps.time[-displayed_indices:], -np.array(boatData.gps.vx[-displayed_indices:]), 
+        if boatData.position.vy:
+            axsBoatVel[1].plot(boatData.position.time[-displayed_indices:], boatData.position.vy[-displayed_indices:], 
                               label='Y Velocity', color='green', alpha=0.7)
         axsBoatVel[1].set_ylabel("m/s")
         axsBoatVel[1].set_title("Y Velocity Boat local frame")
@@ -587,8 +585,8 @@ def update_plot(_):
         # if boatData.simulation.vd:
         #     axsBoatVel[2].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vd[-displayed_indices:], 
         #                       label='Down Velocity (SIM)', color='blue')
-        if boatData.gps.vz:
-            axsBoatVel[2].plot(boatData.gps.time[-displayed_indices:], -np.array(boatData.gps.vz[-displayed_indices:]), 
+        if boatData.position.vz:
+            axsBoatVel[2].plot(boatData.position.time[-displayed_indices:], boatData.position.vz[-displayed_indices:], 
                               label='Z Velocity', color='blue', alpha=0.7)
         axsBoatVel[2].set_ylabel("m/s")
         axsBoatVel[2].set_xlabel("Time (s)")
@@ -622,9 +620,9 @@ def update_plot(_):
         # If no simulation data, try position data
         if droneData.gps.time and boatData.gps.time:
             for i in range(min(len(droneData.gps.time), len(boatData.gps.time))):
-                vx_rel = -droneData.gps.vy[i] + boatData.gps.vy[i]
-                vy_rel = -droneData.gps.vx[i] + boatData.gps.vx[i]
-                vz_rel = -droneData.gps.vz[i] + boatData.gps.vz[i]
+                vx_rel = droneData.gps.vx[i] - boatData.gps.vx[i]
+                vy_rel = droneData.gps.vy[i] - boatData.gps.vy[i]
+                vz_rel = droneData.gps.vz[i] - boatData.gps.vz[i]
                 v_drone = np.sqrt(droneData.gps.vx[i]**2 + droneData.gps.vy[i]**2)
                 v_boat = np.sqrt(boatData.gps.vx[i]**2 + boatData.gps.vy[i]**2)
                 v_mag = v_boat-v_drone
