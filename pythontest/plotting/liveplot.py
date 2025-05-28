@@ -24,9 +24,9 @@ enableBoatTail = True
 enableDroneAttitudeWindow = True
 enableBoatAttitudeWindow = True
 
-enableDroneVelocityWindow = False
-enableBoatVelocityWindow = False
-enableRelativeVelocityWindow = False
+enableDroneVelocityWindow = True
+enableBoatVelocityWindow = True
+enableRelativeVelocityWindow = True
 
 enableWindWindow = False
 
@@ -509,33 +509,39 @@ def update_plot(_):
     # 4. Update Drone Velocity Window
     if enableDroneVelocityWindow and len(axsDroneVel) == 3:
         # X velocity
-        axsDroneVel[0].clear()
-        # if droneData.simulation.vn:
-        #     axsDroneVel[0].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.vn[-displayed_indices:], 
-        #                        label='North Velocity (SIM)', color='red')
-        if droneData.position.vx:
-            axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], droneData.position.vx[-displayed_indices:], 
+        
+        if droneData.position.vx and droneData.position.vy and droneData.gps.hdg:
+            axsDroneVel[0].clear()
+            vx = np.array(droneData.position.vx[-displayed_indices:])
+            vy = np.array(droneData.position.vy[-displayed_indices:])
+            hdg = np.radians(np.array(droneData.gps.hdg[-displayed_indices:]))
+
+            x_vel_drone = vx * np.cos(hdg) + vy * np.sin(hdg)
+            y_vel_drone = -vx * np.sin(hdg) + vy * np.cos(hdg)
+
+
+            axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], x_vel_drone, 
                                label='X Velocity', color='red', alpha=1)
-        axsDroneVel[0].set_ylabel("m/s")
-        axsDroneVel[0].set_title("X Velocity Drone local frame")
-        axsDroneVel[0].set_xlabel("Time (s)")
-        axsDroneVel[0].legend()
-        axsDroneVel[0].grid(True)
-        
-        # Y velocity
-        axsDroneVel[1].clear()
-        # if droneData.simulation.ve:
-        #     axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
-        #                        label='East Velocity (SIM)', color='green')
-        if droneData.position.vy:
-            axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], droneData.position.vy[-displayed_indices:], 
-                               label='Y Velocity', color='green', alpha=1)
-        axsDroneVel[1].set_ylabel("m/s")
-        axsDroneVel[1].set_title("Y Velocity Drone local frame")
-        axsDroneVel[1].set_xlabel("Time (s)")
-        axsDroneVel[1].legend()
-        axsDroneVel[1].grid(True)
-        
+            axsDroneVel[0].set_ylabel("m/s")
+            axsDroneVel[0].set_title("X Velocity Drone local frame")
+            axsDroneVel[0].set_xlabel("Time (s)")
+            axsDroneVel[0].legend()
+            axsDroneVel[0].grid(True)
+            
+            # Y velocity
+            axsDroneVel[1].clear()
+            # if droneData.simulation.ve:
+            #     axsDroneVel[1].plot(droneData.simulation.time[-displayed_indices:], droneData.simulation.ve[-displayed_indices:], 
+            #                        label='East Velocity (SIM)', color='green')
+            
+            axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], y_vel_drone, 
+                                label='Y Velocity', color='green', alpha=1)
+            axsDroneVel[1].set_ylabel("m/s")
+            axsDroneVel[1].set_title("Y Velocity Drone local frame")
+            axsDroneVel[1].set_xlabel("Time (s)")
+            axsDroneVel[1].legend()
+            axsDroneVel[1].grid(True)
+            
         # Z velocity
         axsDroneVel[2].clear()
         # if droneData.simulation.vd:
@@ -552,33 +558,38 @@ def update_plot(_):
     
     # 5. Update Boat Velocity Window
     if enableBoatVelocityWindow and len(axsBoatVel) == 3:
-        # X velocity
-        axsBoatVel[0].clear()
-        # if boatData.simulation.vn:
-        #     axsBoatVel[0].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.vn[-displayed_indices:], 
-        #                       label='North Velocity (SIM)', color='red')
-        if boatData.position.vx:
-            axsBoatVel[0].plot(boatData.position.time[-displayed_indices:], boatData.position.vx[-displayed_indices:], 
-                              label='X Velocity', color='red', alpha=1)
-        axsBoatVel[0].set_ylabel("m/s")
-        axsBoatVel[0].set_title("X Velocity Boat local frame")
-        axsBoatVel[0].set_xlabel("Time (s)")
-        axsBoatVel[0].legend()
-        axsBoatVel[0].grid(True)
         
-        # Y velocity
-        axsBoatVel[1].clear()
-        # if boatData.simulation.ve:
-        #     axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
-        #                       label='East Velocity (SIM)', color='green')
-        if boatData.position.vy:
-            axsBoatVel[1].plot(boatData.position.time[-displayed_indices:], boatData.position.vy[-displayed_indices:], 
+
+
+        if boatData.position.vx and boatData.position.vy and boatData.gps.hdg:
+            vxBoat = np.array(boatData.position.vx[-displayed_indices:])
+            vyBoat = np.array(boatData.position.vy[-displayed_indices:])
+            hdgBoat = np.radians(np.array(boatData.gps.hdg[-displayed_indices:]))
+
+            x_vel_boat = vxBoat * np.cos(hdgBoat) + vyBoat * np.sin(hdgBoat)
+            y_vel_boat = -vxBoat * np.sin(hdgBoat) + vyBoat * np.cos(hdgBoat)
+
+            axsBoatVel[0].clear()
+            axsBoatVel[0].plot(boatData.position.time[-displayed_indices:], x_vel_boat, 
+                              label='X Velocity', color='red', alpha=1)
+            axsBoatVel[0].set_ylabel("m/s")
+            axsBoatVel[0].set_title("X Velocity Boat local frame")
+            axsBoatVel[0].set_xlabel("Time (s)")
+            axsBoatVel[0].legend()
+            axsBoatVel[0].grid(True)
+            
+            # Y velocity
+            axsBoatVel[1].clear()
+            # if boatData.simulation.ve:
+            #     axsBoatVel[1].plot(boatData.simulation.time[-displayed_indices:], boatData.simulation.ve[-displayed_indices:], 
+            #                       label='East Velocity (SIM)', color='green')
+            axsBoatVel[1].plot(boatData.position.time[-displayed_indices:], y_vel_boat, 
                               label='Y Velocity', color='green', alpha=0.7)
-        axsBoatVel[1].set_ylabel("m/s")
-        axsBoatVel[1].set_title("Y Velocity Boat local frame")
-        axsBoatVel[1].set_xlabel("Time (s)")
-        axsBoatVel[1].legend()
-        axsBoatVel[1].grid(True)
+            axsBoatVel[1].set_ylabel("m/s")
+            axsBoatVel[1].set_title("Y Velocity Boat local frame")
+            axsBoatVel[1].set_xlabel("Time (s)")
+            axsBoatVel[1].legend()
+            axsBoatVel[1].grid(True)
         
         # Z velocity
         axsBoatVel[2].clear()
@@ -620,12 +631,34 @@ def update_plot(_):
         # If no simulation data, try position data
         if droneData.gps.time and boatData.gps.time:
             for i in range(min(len(droneData.gps.time), len(boatData.gps.time))):
-                vx_rel = droneData.gps.vx[i] - boatData.gps.vx[i]
-                vy_rel = droneData.gps.vy[i] - boatData.gps.vy[i]
-                vz_rel = droneData.gps.vz[i] - boatData.gps.vz[i]
-                v_drone = np.sqrt(droneData.gps.vx[i]**2 + droneData.gps.vy[i]**2)
-                v_boat = np.sqrt(boatData.gps.vx[i]**2 + boatData.gps.vy[i]**2)
-                v_mag = v_boat-v_drone
+                # Extract values for readability
+                vx_drone = droneData.gps.vx[i]
+                vy_drone = droneData.gps.vy[i]
+                vz_drone = droneData.gps.vz[i]
+                vx_boat = boatData.gps.vx[i]
+                vy_boat = boatData.gps.vy[i]
+                vz_boat = boatData.gps.vz[i]
+                hdg_rad = np.radians(boatData.gps.hdg[i])
+
+                # Relative velocity
+                vx_rel = vx_drone - vx_boat
+                vy_rel = vy_drone - vy_boat
+                vz_rel = vz_drone - vz_boat
+
+                # Speed magnitudes
+                v_drone = np.sqrt(vx_drone**2 + vy_drone**2)
+                v_boat = np.sqrt(vx_boat**2 + vy_boat**2)
+                v_mag = v_boat - v_drone
+
+                # Rotate relative velocity into boat frame
+                vx_rel_rotated = vx_rel * np.cos(hdg_rad) + vy_rel * np.sin(hdg_rad)
+                vy_rel_rotated = -vx_rel * np.sin(hdg_rad) + vy_rel * np.cos(hdg_rad)
+
+                # Final assignments
+                vx_rel = vx_rel_rotated
+                vy_rel = vy_rel_rotated
+                vz_rel = -vz_rel
+
 
                 
                 rel_vn_history.append(vx_rel)
