@@ -53,7 +53,7 @@ def tester():
     # FLUCTUATIONS:
     boat_movement_fluctuation = 40 # Heading in degrees, 10 for landing, 30 for follow
     boat_alt_fluctuation = 6 # Meters
-    throttle_fluct = 200
+    throttle_fluct = 80
     turning_fluctuation_angle = 40 # Degrees
 
     # BASE VALUES:
