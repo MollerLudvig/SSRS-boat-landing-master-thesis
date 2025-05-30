@@ -14,11 +14,13 @@ from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
-# csv_file = "valo_3.csv" 
+# csv_file = "simulation/Guidance/RIVO_short.csv" 
+csv_file = "RIVO_short.csv" 
+csv_file = "RIVO_.csv" 
 # csv_file = "simulation/Guidance/data_short2_modded.csv"
 # csv_file = "data_short_short.csv"
 # csv_file = "data_short2.csv"
-csv_file = "ALV_SNABBEN_5_1.csv"
+# csv_file = "ALV_SNABBEN_5_1.csv"
 
 df = pd.read_csv(csv_file)
 
@@ -57,8 +59,8 @@ t = 0
 dt = 1  # Time step in seconds
 t += dt
 trajectory = []
-lats = []
-lons = []
+lats = np.array([])
+lons = np.array([])
 u_vel = []
 v_vel = []
 velocity = []
@@ -109,6 +111,12 @@ while True:
         ])
         measurment_time = time_serises[time_index]
 
+        if z[0,0] == lat0 and z[1,0] == lon0:
+            print(f"Skipping measurement at time {measurment_time} with lat: {z[0,0]}, lon: {z[1,0]} (same as initial position)")
+            df.drop(index=df.index[0], inplace=True)
+            time_index += 1
+            continue
+
         # Save measurement
         savedMeasurements.append({
             "timestamp": measurment_time,
@@ -135,8 +143,8 @@ while True:
 
     delta_time.append(t - measurment_time)
     trajectory.append((kf.x[0], kf.x[1]))
-    lats.append(kf.lat)
-    lons.append(kf.lon)
+    lats = np.append(lats, kf.lat)
+    lons = np.append(lons, kf.lon)
     velocity.append(np.sqrt(u**2 + v**2))
     u_vel.append(u)
     v_vel.append(v)
@@ -171,8 +179,6 @@ while True:
 
 # Convert filtered XY back to lat/lon for plotting
 filtered_lats, filtered_lons = zip(*[ned_to_latlon(x[0], x[1], lat0, lon0) for x in trajectory])
-# filtered_lats = lats
-# filtered_lons = lons
 
 # print (f"Filtered trajectory: {filtered_lats}, {filtered_lons}")
 
@@ -195,7 +201,7 @@ legendFontsize = 15
 Plot latlons
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(filtered_lats, filtered_lons, 'b-', label="EKF Path")
+plt.plot(lats, lons, 'b-', label="EKF Path")
 plt.plot(dfPlot["lat"].to_numpy(), dfPlot["lon"].to_numpy(), 'ro', markersize=3, label="Raw AIS Data")
 plt.xlabel("Latitude", fontsize=labelFontsize)
 plt.ylabel("Longitude", fontsize=labelFontsize)
@@ -308,4 +314,27 @@ plt.legend(fontsize=legendFontsize)
 plt.grid(True)
 plt.tight_layout()
 
+
+
+"""
+Plot filtered trajectory and AIS data
+"""
+
+# Create a geographic plot with PlateCarree projection
+fig = plt.figure(figsize=commonFigsize)
+ax = plt.axes(projection=ccrs.PlateCarree())
+
+# Plot EKF and AIS points
+ax.plot(lons, lats, 'b-', label="EKF Path", transform=ccrs.Geodetic())
+ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro', markersize=3, label="Raw AIS Data", transform=ccrs.Geodetic())
+
+# Add features like coastlines, gridlines, and borders
+ax.coastlines(resolution='10m')
+ax.add_feature(cfeature.BORDERS, linestyle=':')
+ax.gridlines(draw_labels=True)
+
+# Title and legend
+plt.title("Coordinates: AIS vs EKF", fontsize=titleFontsize)
+plt.legend(fontsize=legendFontsize)
+# plt.tight_layout()
 plt.show()
