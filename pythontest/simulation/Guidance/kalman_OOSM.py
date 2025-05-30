@@ -12,6 +12,7 @@ class KalmanFilterXY:
         heading_rad = np.deg2rad(heading)
 
         self.x = np.array([[0], [0], [heading_rad], [u], [v], [0], [0], [0]])  # State: [x, y, yaw (psi), vx (u), vy (v), yaw rate (r), ax, ay]
+        self.slow_mode = False  # Flag for slow mode, not used in this class but can be useful for future extensions
         self.init_lat = init_lat
         self.init_lon = init_lon
         self.lat = None
@@ -42,6 +43,12 @@ class KalmanFilterXY:
         State: [x, y, psi, u, v, r, ax, ay]
 
         """
+        if self.slow_mode:
+            # In slow mode, we assume constant acceleration and no jerk
+            sigmaA *= 0.1  # Reduce acceleration noise
+            sigmaAR *= 0.1  # Reduce angular acceleration noise
+            sigmaJ = 0.0  # No jerk noise in slow mode
+
         Q = np.zeros((8, 8))
 
         # Process noise for x, y (via u, ax), and u, ax coupling
@@ -108,7 +115,11 @@ class KalmanFilterXY:
 
         # Calculate innovation
         y = z - h
-        y[2][0] = self.wrap_angle_rad(y[2][0])
+        # If ais, wrap angle and calculate heading innovation
+        if z.shape[0] == 5:
+            y[2][0] = self.angel_innovation(z[2][0], h[2][0])  # Calculate heading innovation
+            y[3][0] = self.angel_innovation(z[3][0], h[3][0])  # Calculate course innovation
+
 
         # Innovation covariance
         S = H @ (self.P @ H.T) + R 
@@ -119,6 +130,8 @@ class KalmanFilterXY:
         # Update state
         self.x = self.x + K @ y
         self.x[2][0] = self.wrap_angle_rad(self.x[2][0])
+        self.clamp_acceleration()  # Clamp acceleration values if needed
+        self.clamp_yaw_rate()  # Clamp yaw rate if needed
             
         # Joseph form for covariance update
         I = np.eye(self.n)  # Identity matrix
@@ -142,14 +155,18 @@ class KalmanFilterXY:
 
         # Predict state using nonlinear model
         self.x = self.transition_function(self.x, dt)
+        # Clamp acceleration values if needed
+        self.clamp_acceleration()
+        # Clamp yaw rate if needed
+        self.clamp_yaw_rate()
 
         # Compute Jacobian F
         F = self.compute_jacobian(dt)
 
         # Create process noise covariance Q
-        sigmaA = 0.5 # Acceleration influencing position
-        sigmaAR = 0.05 # Angular acceleration (rad/s²)
-        sigmaJ = 0.5     # Jerk magnitude (m/s³), if modeling ax/ay as slowly changing
+        sigmaA = 1.0 # Acceleration influencing position
+        sigmaAR = 0.1 # Angular acceleration (rad/s²)
+        sigmaJ = 1.0     # Jerk magnitude (m/s³), if modeling ax/ay as slowly changing
         Q = self._create_Q(dt, sigmaA, sigmaAR, sigmaJ)
         # Q = self.compute_q()
         # Q = np.eye(self.n) * self.process_noise_variance
@@ -198,6 +215,14 @@ class KalmanFilterXY:
         ])
         # Wrap angles to [-pi, pi]
         dx[2][0] = self.wrap_angle_rad(dx[2][0])
+
+        # If slow mode, limit acceleration, velocity, and yaw rate
+        if self.slow_mode:
+            dx[3][0] = np.clip(dx[3][0], -0.5*dt, 0.5*dt)   # Limit velocity u
+            dx[4][0] = np.clip(dx[4][0], -0.5*dt, 0.5*dt)   # Limit velocity v
+            dx[5][0] = np.clip(dx[5][0], -0.01*dt, 0.01*dt)   # Limit yaw rate r
+            dx[6][0] = np.clip(dx[6][0], -0.1*dt, 0.1*dt)   # Limit acceleration ax
+            dx[7][0] = np.clip(dx[7][0], -0.05*dt, 0.05*dt)   # Limit acceleration ay
 
         return dx
 
@@ -356,6 +381,12 @@ class KalmanFilterXY:
         - z[3]: course in degrees
         - z[4]: velocity in m/s
         """
+        # Check slow mode
+        if z[4][0] < 0.4:
+            self.slow_mode = True
+        else:
+            self.slow_mode = False
+
         # Prerpocess the AIS measurement 
         z[0][0], z[1][0] = latlon_to_ned(z[0][0], z[1][0], self.init_lat, self.init_lon)
         z[2][0] = self.wrap_angle_rad(np.deg2rad(z[2][0]))  # heading in radians
@@ -383,6 +414,10 @@ class KalmanFilterXY:
         h[2,0] = self.x[2,0]   # heading (psi)
         h[3,0] = self.x[2,0] + course  # course (psi + course)
         h[4,0] = speed
+
+        # Wrap angles to [-pi, pi]
+        h[2,0] = self.wrap_angle_rad(h[2,0])
+        h[3,0] = self.wrap_angle_rad(h[3,0])
         return h
     
 
@@ -422,7 +457,7 @@ class KalmanFilterXY:
     #     R_AIS[3][3] = 0.05  # course
     #     R_AIS[4][4] = 0.1  # velocity
     #     return R_AIS
-    def _get_R_AIS(self, V, sigmaGPS=5.0, dtErr=0.5, sigmaLow=0.05, sigmaHigh=1.0, V0=2.0, zeta=2.0, sigmaV=0.5):
+    def _get_R_AIS(self, V, sigmaGPS=3.0, dtErr=0.5, sigmaLow=0.05, sigmaHigh=1.0, V0=4.0, zeta=2.0, sigmaV=0.5):
         """
         Get the measurement noise covariance matrix for AIS measurements.
 
@@ -450,7 +485,7 @@ class KalmanFilterXY:
         R_AIS = np.zeros((5, 5))
         R_AIS[0, 0] = sigmaXY ** 2       # N
         R_AIS[1, 1] = sigmaXY ** 2       # E
-        R_AIS[2, 2] = sigmaDeg ** 2      # Heading (yaw)
+        R_AIS[2, 2] = sigmaLow ** 2      # Heading (yaw)
         R_AIS[3, 3] = sigmaDeg ** 2      # Course
         R_AIS[4, 4] = sigmaV ** 2        # Velocity magnitude
         return R_AIS
@@ -508,3 +543,35 @@ class KalmanFilterXY:
     def wrap_angle_rad(self, angle):
         return (angle + np.pi) % (2*np.pi) - np.pi
 
+
+    def clamp_acceleration(self, max_acceleration=3.0):
+        """
+        Clamp acceleration values to a maximum magnitude.
+        """
+        self.x[6][0] = np.clip(self.x[6][0], -max_acceleration, max_acceleration)  # ax
+        self.x[7][0] = np.clip(self.x[7][0], -max_acceleration, max_acceleration)  # ay
+
+    def clamp_yaw_rate(self, max_yaw_rate=0.3):
+        """
+        Clamp yaw rate to a maximum magnitude.
+        """
+        self.x[5][0] = np.clip(self.x[5][0], -max_yaw_rate, max_yaw_rate)
+
+    def angel_innovation(self, z, h):
+        """
+        Calculate the heading innovation from the measurement and predicted state.
+        z: np.array of shape (5, 1) - AIS measurement
+        h: np.array of shape (5, 1) - Predicted measurement
+        """
+        # Heading innovation is the difference between the measured and predicted heading
+        heading_innovation = z - h
+
+        # It they have been wrapped to diffrent sides
+        if heading_innovation > (np.pi) or heading_innovation < -(np.pi):
+            if h < 0 and z > 0:
+                h_teamp = h + 2 * np.pi
+                heading_innovation = z - h_teamp
+            elif z < 0 and h > 0:
+                z_temp = z + 2 * np.pi
+                heading_innovation = z_temp - h
+        return heading_innovation
