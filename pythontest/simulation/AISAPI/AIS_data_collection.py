@@ -78,8 +78,9 @@ class AISTracker:
                     data = json.loads(ais_msg.to_json())
                     mmsi = data.get("mmsi")
                     
-                    # Save message if MMSI matches
-                    if str(mmsi) == str(self.MMSI):
+                    # Save message if MMSI matches  AND  msg_type is 1 or 3
+                    # https://www.navcen.uscg.gov/ais-messages
+                    if str(mmsi) == str(self.MMSI) and data.get("msg_type") in [1, 3]:
                         # Print the message if verbose is enabled
                         if verbose:
                             print(f"Received AIS message: {data}")
@@ -87,7 +88,10 @@ class AISTracker:
                         self.data = data
                         
                         # Add speed in m/s
-                        self.data["speed[m/s]"] = data.get("speed") * 0.514444
+                        try:
+                            self.data["speed[m/s]"] = data.get("speed") * 0.514444
+                        except:
+                            self.data["speed[m/s]"] = 0
 
                         # Add timestamps
                         self._manage_time()
@@ -183,7 +187,7 @@ class AISTracker:
 if __name__ == "__main__":
     # List of MMSI numbers to track
 
-    tracker = AISTracker(MMSI="265547230", csvFileName="ylva")
+    tracker = AISTracker(MMSI="265650950", csvFileName="RIVO")
 
     async def main():
         await tracker.connect_ais_stream()
