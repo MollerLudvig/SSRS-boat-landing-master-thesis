@@ -43,7 +43,7 @@ def tester():
     needed_Gr = 1/20 # Glide ratio
     descent_lookahead = 0.5
     descent_lookahead_start = 4
-    aim_under_boat = 0 # In meters, If we want the drone to aim slightly under the boat
+    aim_under_boat = 1 # In meters, If we want the drone to aim slightly under the boat
     altitude_error_gain = 0.4
     speed_gain = 0.25
     diversion_distance = 40 # In meters, How far the drone should fly to the side when diverting
@@ -105,6 +105,9 @@ def tester():
     landing_iterator = 0
     dist_to_start_coord = 0
     iterator = 0
+
+    decent_started = False
+    ittrs_after_descent = 0
 
     # Main loop
     while True:
@@ -288,6 +291,7 @@ def tester():
 
         # Land on boat
         elif drone.stage == "land":
+            decent_started = True
 
             # Move boat
             boat_target_lat, boat_target_lon = wp.calc_look_ahead_point(boat.lat, boat.lon, commanded_boat_direction, 200) 
@@ -379,9 +383,9 @@ def tester():
 
                 drone_coordinates.append((drone.lat, drone.lon))
                 # Save z_wanted not z_wanted_lh because we compare to where the drone currently should be
-                if landing_iterator >= 1:
-                    dist_to_start_coord = wp.dist_between_coords(drone_coordinates[0][0], drone_coordinates[0][1],
-                                                                drone_coordinates[landing_iterator][0], drone_coordinates[landing_iterator][1])
+                # if landing_iterator >= 1:
+                #     dist_to_start_coord = wp.dist_between_coords(drone_coordinates[0][0], drone_coordinates[0][1],
+                #                                                 drone_coordinates[landing_iterator][0], drone_coordinates[landing_iterator][1])
 
                 # Update data dicts
                 drone.data.update({"time": timestamp,
@@ -471,14 +475,27 @@ def tester():
         
         
 
+
+
         # add stuff to redis stream if they have not been populated this itteration
         print('here')
         if "time" not in drone.data or ("time" in drone.data and drone.data["time"] != timestamp):
+
+            # Update wanted z for a few itters after quitting # THIS NO BUENO BUT FOR PLOTTING YOU KNOW
+            if decent_started and landing_iterator <= 10:
+                distance_to_prev_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
+                z_wanted = (min(cruise_altitude, (max(0, distance_to_prev_P3))*prev_Gr + boat.altitude - aim_under_boat))
+                landing_iterator += 1
+            else:
+                z_wanted = cruise_altitude
+                landing_iterator = 0
+                decent_started = False
+
             print("updating drone data")
             drone.data.update({"time": timestamp,
                             "xs": 0,
                             "altitude": drone.altitude,
-                            "z_wanted": cruise_altitude,
+                            "z_wanted": z_wanted,
                             "needed_sr": 0,
                             "wanted_sr": 0,
                             "actual_sr": drone.vz,
