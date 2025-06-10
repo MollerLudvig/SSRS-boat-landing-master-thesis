@@ -5,22 +5,24 @@ import csv
 # import matplotlib
 # matplotlib.use("Agg")  # Use non-interactive backend
 import matplotlib.pyplot as plt
+# plt.style.use('dark_background')
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.io.img_tiles import OSM
 from kalman_OOSM import KalmanFilterXY
-from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned
+from coordinate_conv import latlon_to_xy, xy_to_latlon, ned_to_latlon, latlon_to_ned, latlon_to_xy_vectors
 
 # Load AIS data
 # csv_file = "pythontest/Guidance/valo_3.csv"  
 # csv_file = "simulation/Guidance/RIVO_short.csv" 
-csv_file = "RIVO_short.csv" 
-csv_file = "RIVO_.csv" 
+# csv_file = "RIVO_short.csv" 
+# csv_file = "RIVO_1.csv" 
 # csv_file = "simulation/Guidance/data_short2_modded.csv"
 # csv_file = "data_short_short.csv"
-# csv_file = "data_short2.csv"
+csv_file = "data_short2.csv"
 # csv_file = "ALV_SNABBEN_5_1.csv"
+# csv_file = "ssrs-josephine_1.csv"
 
 df = pd.read_csv(csv_file)
 
@@ -148,9 +150,9 @@ while True:
     velocity.append(np.sqrt(u**2 + v**2))
     u_vel.append(u)
     v_vel.append(v)
-    course.append(np.rad2deg(np.arctan2(v,u)+kf.x[2, 0]) )
-    heading.append(kf.x[2, 0])
-    yawrate.append(kf.x[5, 0])
+    course.append(wrap_to_180(np.rad2deg(np.arctan2(v,u)+kf.x[2, 0])))
+    heading.append(wrap_to_180(np.rad2deg(kf.x[2, 0])))
+    yawrate.append(np.rad2deg(kf.x[5, 0]))
     ax.append(kf.x[6, 0])
     ay.append(kf.x[7, 0])
     timestamps.append(t)
@@ -162,7 +164,7 @@ while True:
     "heading": np.rad2deg(kf.x[2, 0]),
     "u": kf.x[3, 0],
     "v": kf.x[4, 0],
-    "yawrate": kf.x[5, 0],
+    "yawrate": np.rad2deg(kf.x[5, 0]),
     "ax": kf.x[6, 0],
     "ay": kf.x[7, 0],
     "lat": kf.lat,
@@ -198,13 +200,16 @@ legendFontsize = 15
 
 
 """
-Plot latlons
+Plot latlons (actually xy meters)
 """
+x_measured, y_measured = latlon_to_xy_vectors(dfPlot["lat"].to_numpy(), dfPlot["lon"].to_numpy(), lat0, lon0)
+x_filterd, y_filterd = latlon_to_xy_vectors(filtered_lats, filtered_lons, lat0, lon0)
+
 plt.figure(figsize=commonFigsize)
-plt.plot(lats, lons, 'b-', label="EKF Path")
-plt.plot(dfPlot["lat"].to_numpy(), dfPlot["lon"].to_numpy(), 'ro', markersize=3, label="Raw AIS Data")
-plt.xlabel("Latitude", fontsize=labelFontsize)
-plt.ylabel("Longitude", fontsize=labelFontsize)
+plt.plot(y_filterd/1000, x_filterd/1000, 'b-', label="EKF Path", color="blue")
+plt.plot(y_measured/1000, x_measured/1000, 'ro', markersize=3, label="Raw AIS Data", color="red", alpha=0.8)
+plt.ylabel("East [km]", fontsize=labelFontsize)
+plt.xlabel("North [km]", fontsize=labelFontsize)
 plt.xticks(fontsize=tickFontsize)
 plt.yticks(fontsize=tickFontsize)
 plt.title("Coordinates: AIS vs EKF", fontsize=titleFontsize)
@@ -217,9 +222,9 @@ plt.tight_layout()
 Plot filtered velocity
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, velocity, label="EKF Velocity", color="blue")
+plt.plot(timestamps, velocity, label="EKF Velocity", color="lightskyblue")
 plt.plot(time_serises, dfPlot["speed[m/s]"].to_numpy(), label="Measured Velocity", color="red", alpha=0.6)
-plt.plot(timestamps, u_vel, label="EKF u velocity", color="green", alpha=0.6)
+plt.plot(timestamps, u_vel, label="EKF u velocity", color="lightgreen", alpha=0.6)
 plt.plot(timestamps, v_vel, label="EKF v velocity", color="orange", alpha=0.6)
 plt.xlabel("Time [s]", fontsize=labelFontsize)
 plt.ylabel("Velocity [m/s]", fontsize=labelFontsize)
@@ -239,8 +244,8 @@ measurd_heading = wrap_to_180(dfPlot["heading"].to_numpy())
 measurd_course = wrap_to_180(dfPlot["course"].to_numpy())
 
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, np.rad2deg(heading), label="EKF Heading", color="blue")
-plt.plot(timestamps, course, label="EKF Course", color="green", alpha=0.6)
+plt.plot(timestamps, heading, label="EKF Heading", color="lightskyblue")
+plt.plot(timestamps, course, label="EKF Course", color="lightgreen", alpha=0.6)
 plt.plot(time_serises, measurd_heading, label="Measured Heading", color="red", alpha=0.6)
 plt.plot(time_serises, measurd_course, label="Measured Course", color="orange", alpha=0.6)
 plt.xlabel("Time [s]", fontsize=labelFontsize)
@@ -257,7 +262,7 @@ plt.tight_layout()
 Plot timestams
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, label="Timestamps", color="blue")
+plt.plot(timestamps, label="Timestamps", color="lightskyblue")
 plt.xlabel("Time [s]", fontsize=labelFontsize)
 plt.ylabel("Timestamps [s]", fontsize=labelFontsize)
 plt.xticks(fontsize=tickFontsize)
@@ -272,7 +277,7 @@ plt.tight_layout()
 Plot delta time
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, delta_time, label="Delta Time", color="blue")
+plt.plot(timestamps, delta_time, label="Delta Time", color="lightskyblue")
 plt.xlabel("Time [s]", fontsize=labelFontsize)
 plt.ylabel("Delta Time [s]", fontsize=labelFontsize)
 plt.xticks(fontsize=tickFontsize)
@@ -288,9 +293,9 @@ plt.tight_layout()
 Plot filtered yawrate
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, yawrate, label="EKF Yawrate", color="blue")
+plt.plot(timestamps, yawrate, label="EKF Yawrate", color="lightskyblue")
 plt.xlabel("Time [s]", fontsize=labelFontsize)
-plt.ylabel("Yawrate [rad/s]", fontsize=labelFontsize)
+plt.ylabel("Yawrate [deg/s]", fontsize=labelFontsize)
 plt.xticks(fontsize=tickFontsize)
 plt.yticks(fontsize=tickFontsize)
 plt.title("Yawrate EKF", fontsize=titleFontsize)
@@ -303,7 +308,7 @@ plt.tight_layout()
 Plot filterd acceleration
 """
 plt.figure(figsize=commonFigsize)
-plt.plot(timestamps, ax, label="EKF x accelerations", color="green", alpha=0.6)
+plt.plot(timestamps, ax, label="EKF x accelerations", color="lightgreen", alpha=0.6)
 plt.plot(timestamps, ay, label="EKF y accelerations", color="orange", alpha=0.6)
 plt.xlabel("Time [s]", fontsize=labelFontsize)
 plt.ylabel("Acceleration [m/s²]", fontsize=labelFontsize)
@@ -325,8 +330,8 @@ fig = plt.figure(figsize=commonFigsize)
 ax = plt.axes(projection=ccrs.PlateCarree())
 
 # Plot EKF and AIS points
-ax.plot(lons, lats, 'b-', label="EKF Path", transform=ccrs.Geodetic())
-ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro', markersize=3, label="Raw AIS Data", transform=ccrs.Geodetic())
+ax.plot(lons, lats, 'b-', label="EKF Path", transform=ccrs.Geodetic(), color="lightskyblue")
+ax.plot(dfPlot["lon"].to_numpy(), dfPlot["lat"].to_numpy(), 'ro', markersize=3, label="Raw AIS Data", transform=ccrs.Geodetic(), color="red", alpha=0.6)
 
 # Add features like coastlines, gridlines, and borders
 ax.coastlines(resolution='10m')
@@ -337,4 +342,34 @@ ax.gridlines(draw_labels=True)
 plt.title("Coordinates: AIS vs EKF", fontsize=titleFontsize)
 plt.legend(fontsize=legendFontsize)
 # plt.tight_layout()
+
+
+
+"""
+Plot corse and velocity on the same
+"""
+fig, ax1 = plt.subplots(figsize=commonFigsize)
+
+# Plot velocity (left y-axis)
+ax1.plot(time_serises, dfPlot["speed[m/s]"].to_numpy(), color="red", alpha=0.8, label="Measured Velocity")
+ax1.set_xlabel("Time [s]", fontsize=labelFontsize)
+ax1.set_ylabel("Velocity [m/s]", fontsize=labelFontsize)
+ax1.tick_params(axis="y", labelcolor="black", labelsize=tickFontsize)
+ax1.tick_params(axis="x", labelsize=tickFontsize)
+ax1.grid(True)
+
+# Plot course (right y-axis)
+ax2 = ax1.twinx()
+ax2.plot(time_serises, measurd_course, color="blue", alpha=0.8, label="Measured Course")
+ax2.set_ylabel("Course [deg]", fontsize=labelFontsize)
+ax2.tick_params(axis="y", labelcolor="black", labelsize=tickFontsize)
+
+# Title
+fig.suptitle("Course and Velocity: EKF", fontsize=titleFontsize)
+
+# Legends on corresponding sides
+ax1.legend(loc="upper left", fontsize=legendFontsize)
+ax2.legend(loc="upper right", fontsize=legendFontsize)
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 plt.show()
