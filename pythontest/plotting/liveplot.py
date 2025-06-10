@@ -19,14 +19,14 @@ Simulation = True
 # Configure window display options
 enablePositionWindow = True
 plotLocalPosition = True
-enableBoatTail = True
+enableBoatTail = False
 
-enableDroneAttitudeWindow = True
-enableBoatAttitudeWindow = True
+enableDroneAttitudeWindow = False
+enableBoatAttitudeWindow = False
 
-enableDroneVelocityWindow = True
-enableBoatVelocityWindow = True
-enableRelativeVelocityWindow = True
+enableDroneVelocityWindow = False
+enableBoatVelocityWindow = False
+enableRelativeVelocityWindow = False
 
 enableWindWindow = False
 
@@ -36,7 +36,7 @@ enableDistToP = False
 
 enableAltitude = True
 
-savePlots = True
+savePlots = False
 
 displayed_indices = 150
 
@@ -111,15 +111,16 @@ if enableWindWindow:
     # figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
 if enableCollisionWindow:
-    figCollision, axsCollision = plt.subplots(3, 2, figsize=(8, 6), num="Collision Detection", constrained_layout=False)
+    figCollision, axsCollision = plt.subplots(2, 2, figsize=(11, 10), num="Collision Detection", constrained_layout=True)
     # figCollision.suptitle(f"Collision Detection", fontsize=20)
+    figtimedelta, axtimedelta = plt.subplots(1, 1, figsize=(8, 5), num="Time Delta", constrained_layout=True)
 
 if enableDistToP:
     figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
     figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
 if enableAltitude:
-    figAltitude, axsAltitude = plt.subplots(2, 1, figsize=(8, 5), num="Altitude", constrained_layout=True)
+    figAltitude, axsAltitude = plt.subplots(1, 1, figsize=(14, 4), num="Altitude", constrained_layout=True)
     # figAltitude.suptitle(f"Altitude", fontsize=14)
 
 def get_vector_magnitude(x, y, z=0):
@@ -266,8 +267,8 @@ def plot_local_position():
 
 
     # Axis formatting
-    axGlobal.set_xlabel("East (m)", fontsize=18)
-    axGlobal.set_ylabel("North (m)", fontsize=18)
+    axGlobal.set_xlabel("East (m)", fontsize=20)
+    axGlobal.set_ylabel("North (m)", fontsize=20)
     axGlobal.legend(fontsize=18)
     axGlobal.tick_params(axis='both', labelsize=18)
     axGlobal.grid(True)
@@ -335,8 +336,8 @@ def plot_global_position_():
         axGlobal.plot(droneData.gps.lon[-1], droneData.gps.lat[-1], 
                     'x', markersize=15, color=colors.drone, alpha=0.7)
         
-    axGlobal.set_xlabel("Longitude", fontsize=18)
-    axGlobal.set_ylabel("Latitude", fontsize=18) 
+    axGlobal.set_xlabel("Longitude", fontsize=20)
+    axGlobal.set_ylabel("Latitude", fontsize=20) 
     axGlobal.legend(fontsize=18)
     axGlobal.tick_params(axis='both', labelsize=18)
     axGlobal.xaxis.set_major_formatter(FormatStrFormatter('%.4f'))  # for longitude
@@ -357,7 +358,7 @@ def update_plot(_):
     # Check if landed ( or maby rather distance to get collision data)
     if enableCollisionWindow:
         is_landed(collision_data, boatData, droneData, landing_threshold = [4, 2, 2], 
-                  offset_transform = [2, 0.0, 0.5], max_time_delta = 0.09)
+                  offset_transform = [3.5, 0.0, 0.25], max_time_delta = 0.09)
 
     # 1. Update Global Position Window
     if enablePositionWindow:
@@ -522,10 +523,10 @@ def update_plot(_):
 
             axsDroneVel[0].plot(droneData.position.time[-displayed_indices:], x_vel_drone, 
                                label='X Velocity', color='red', alpha=1)
-            axsDroneVel[0].set_ylabel("m/s")
-            axsDroneVel[0].set_title("X Velocity Drone local frame")
-            axsDroneVel[0].set_xlabel("Time (s)")
-            axsDroneVel[0].legend()
+            axsDroneVel[0].set_ylabel("m/s", fontsize=17)
+            axsDroneVel[0].set_title("X Velocity Drone local frame", fontsize=20)
+            axsDroneVel[0].legend(fontsize=15)
+            axsDroneVel[0].tick_params(axis='both', labelsize=15)
             axsDroneVel[0].grid(True)
             
             # Y velocity
@@ -536,10 +537,10 @@ def update_plot(_):
             
             axsDroneVel[1].plot(droneData.position.time[-displayed_indices:], y_vel_drone, 
                                 label='Y Velocity', color='green', alpha=1)
-            axsDroneVel[1].set_ylabel("m/s")
-            axsDroneVel[1].set_title("Y Velocity Drone local frame")
-            axsDroneVel[1].set_xlabel("Time (s)")
-            axsDroneVel[1].legend()
+            axsDroneVel[1].set_ylabel("m/s", fontsize=17)
+            axsDroneVel[1].set_title("Y Velocity Drone local frame", fontsize=20)
+            axsDroneVel[1].legend(fontsize=15)
+            axsDroneVel[1].tick_params(axis='both', labelsize=15)
             axsDroneVel[1].grid(True)
             
         # Z velocity
@@ -550,9 +551,10 @@ def update_plot(_):
         if droneData.position.vz:
             axsDroneVel[2].plot(droneData.position.time[-displayed_indices:], droneData.position.vz[-displayed_indices:], 
                                label='Z Velocity', color='blue', alpha=1)
-        axsDroneVel[2].set_ylabel("m/s")
-        axsDroneVel[2].set_xlabel("Time (s)")
-        axsDroneVel[2].set_title("Z Velocity Drone local frame")
+        axsDroneVel[2].set_ylabel("m/s", fontsize=17)
+        axsDroneVel[2].set_xlabel("Time (s)", fontsize=17)
+        axsDroneVel[2].set_title("Z Velocity Drone local frame", fontsize=20)
+        axsDroneVel[2].tick_params(axis='both', labelsize=15)
         axsDroneVel[2].legend()
         axsDroneVel[2].grid(True)
     
@@ -713,8 +715,8 @@ def update_plot(_):
             axsWind[0].plot(droneData.wind.time[-displayed_indices:], droneData.wind.speed[-displayed_indices:], label='Wind Speed', color='cyan')
             axsWind[0].set_title("Wind Speed", fontsize=20)
             axsWind[0].set_ylabel("m/s", fontsize=17)
-            axsWind[0].set_xlabel("Time (s)", fontsize=17)
-            axsWind[0].tick_params(axis='both', labelsize=13)
+            # axsWind[0].set_xlabel("Time (s)", fontsize=17)
+            axsWind[0].tick_params(axis='both', labelsize=15)
             axsWind[0].legend(fontsize=15)
             axsWind[0].grid(True)
 
@@ -726,7 +728,7 @@ def update_plot(_):
             axsWind[1].set_title("Wind Direction", fontsize=20)
             axsWind[1].set_ylabel("Degrees", fontsize=17)
             axsWind[1].set_xlabel("Time (s)", fontsize=17)
-            axsWind[1].tick_params(axis='both', labelsize=13)
+            axsWind[1].tick_params(axis='both', labelsize=15)
             axsWind[1].legend(fontsize=15)
             axsWind[1].grid(True)
 
@@ -744,59 +746,61 @@ def update_plot(_):
 
         # Collision detection
         axsCollision[0, 0].clear()
-        axsCollision[0, 0].plot(collision_data.time[-displayed_indices:], collision_data.distance[-displayed_indices:], label='Absolute distance', color='red')
+        axsCollision[0, 0].plot(collision_data.time[-displayed_indices:], collision_data.distance[-displayed_indices:], color='red')
         for i, t in enumerate(collision_timestamps):
-            label = 'Event Time' if i == 0 else ""
+            label = 'Min dist. point' if i == 0 else ""
             axsCollision[0, 0].axvline(x=t, color='black', linestyle='--', label=label)
-        axsCollision[0, 0].set_title("Absolute Distance, boat to drone", fontsize=20)
-        axsCollision[0, 0].set_ylabel("Distance (m)", fontsize=17)
-        axsCollision[0, 0].tick_params(axis='both', labelsize=13)
-        axsCollision[0, 0].legend(fontsize=15)
+        axsCollision[0, 0].set_title("Absolute Distance", fontsize=22)
+        axsCollision[0, 0].set_ylabel("Distance (m)", fontsize=20)
+        axsCollision[0, 0].tick_params(axis='both', labelsize=16)
+        axsCollision[0, 0].legend(fontsize=18)
         axsCollision[0, 0].grid(True)
         
         # Collision distance
         axsCollision[0, 1].clear()
-        axsCollision[0, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_x[-displayed_indices:], label='Delta X', color='blue')
+        axsCollision[0, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_x[-displayed_indices:], color='blue')
         for i, t in enumerate(collision_timestamps):
-            label = 'Event Time' if i == 0 else ""
+            label = 'Min dist. point' if i == 0 else ""
             axsCollision[0, 1].axvline(x=t, color='black', linestyle='--', label=label)
-        axsCollision[0, 1].set_title("Delta X to Collision", fontsize=20)
-        axsCollision[0, 1].set_ylabel("Distance (m)", fontsize=17)
-        axsCollision[0, 1].tick_params(axis='both', labelsize=13)
-        axsCollision[0, 1].legend(fontsize=15)
+        axsCollision[0, 1].set_title("Delta X", fontsize=22)
+        # axsCollision[0, 1].set_ylabel("Distance (m)", fontsize=17)
+        axsCollision[0, 1].tick_params(axis='both', labelsize=16)
+        axsCollision[0, 1].legend(fontsize=18)
         axsCollision[0, 1].grid(True)
         
         # Collision delta time
         axsCollision[1, 0].clear()
-        axsCollision[1, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_y[-displayed_indices:], label='Delta Y', color='green')
+        axsCollision[1, 0].plot(collision_data.time[-displayed_indices:], collision_data.delta_y[-displayed_indices:], color='green')
         for i, t in enumerate(collision_timestamps):
-            label = 'Event Time' if i == 0 else ""
+            label = 'Min dist. point' if i == 0 else ""
             axsCollision[1, 0].axvline(x=t, color='black', linestyle='--', label=label)
-        axsCollision[1, 0].set_title("Delta Y to Collision", fontsize=20)
-        axsCollision[1, 0].set_ylabel("Distance (m)", fontsize=17)
-        axsCollision[1, 0].tick_params(axis='both', labelsize=13)
-        axsCollision[1, 0].legend(fontsize=15)
+        axsCollision[1, 0].set_title("Delta Y", fontsize=22)
+        axsCollision[1, 0].set_ylabel("Distance (m)", fontsize=20)
+        axsCollision[1, 0].set_xlabel("Time (s)", fontsize=20)
+        axsCollision[1, 0].tick_params(axis='both', labelsize=16)
+        axsCollision[1, 0].legend(fontsize=18)
         axsCollision[1, 0].grid(True)
         
         # Collision delta x
         axsCollision[1, 1].clear()
-        axsCollision[1, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_z[-displayed_indices:], label='Delta Z', color='orange')
+        axsCollision[1, 1].plot(collision_data.time[-displayed_indices:], collision_data.delta_z[-displayed_indices:], color='orange')
         for i, t in enumerate(collision_timestamps):
-            label = 'Event Time' if i == 0 else ""
+            label = 'Min dist. point' if i == 0 else ""
             axsCollision[1, 1].axvline(x=t, color='black', linestyle='--', label=label)
-        axsCollision[1, 1].set_title("Delta Z to Collision", fontsize=20)
-        axsCollision[1, 1].set_ylabel("Distance (m)", fontsize=17)
-        axsCollision[1, 1].tick_params(axis='both', labelsize=13)
-        axsCollision[1, 1].legend(fontsize=15)
+        axsCollision[1, 1].set_title("Delta Z", fontsize=22)
+        # axsCollision[1, 1].set_ylabel("Distance (m)", fontsize=17)
+        axsCollision[1, 1].set_xlabel("Time (s)", fontsize=20)
+        axsCollision[1, 1].tick_params(axis='both', labelsize=16)
+        axsCollision[1, 1].legend(fontsize=18)
         axsCollision[1, 1].grid(True)
 
         # Delta time
-        axsCollision[2, 0].clear()
-        axsCollision[2, 0].plot(collision_data.delta_time_timestamp[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
-        axsCollision[2, 0].set_title("Delta Time measurments", fontsize=20)
-        axsCollision[2, 0].set_ylabel("Time (s)", fontsize=17)
-        axsCollision[2, 0].set_xlabel("Timestamp(s)", fontsize=17)
-        axsCollision[2, 0].tick_params(axis='both', labelsize=13)
+        axtimedelta.clear()
+        axtimedelta.plot(collision_data.delta_time_timestamp[-displayed_indices:], collision_data.delta_time[-displayed_indices:], label='Delta Time', color='purple')
+        axtimedelta.set_title("Delta Time measurments", fontsize=20)
+        axtimedelta.set_ylabel("Time (s)", fontsize=17)
+        axtimedelta.set_xlabel("Timestamp(s)", fontsize=17)
+        axtimedelta.tick_params(axis='both', labelsize=13)
 
         # Mask out none collision timepoints in distance data
         collision_mask = np.array(collision_data.collision[-displayed_indices:])
@@ -804,27 +808,27 @@ def update_plot(_):
         collision_distance[~collision_mask] = 0
 
 
-        # Plot collision 
-        if collision_data.collision[-displayed_indices:]:
-            axsCollision[2, 1].clear()
-            axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
-            for i, t in enumerate(collision_timestamps):
-                label = 'Event Time' if i == 0 else ""
-                axsCollision[2, 1].axvline(x=t, color='black', linestyle='--', label=label)
-            axsCollision[2, 1].set_title("Collision distance", fontsize=20)
-            axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=17)
-            axsCollision[2, 1].set_xlabel("Timestamp(s)", fontsize=17)
-            axsCollision[2, 1].tick_params(axis='both', labelsize=13)
-            axsCollision[2, 1].legend(fontsize=15)
-            axsCollision[2, 1].grid(True)
-        else:
-            axsCollision[2, 1].clear()
-            axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='No Collision', color='red')
-            axsCollision[2, 1].set_title("No Collision", fontsize=20)
-            axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=17)
-            axsCollision[2, 1].tick_params(axis='both', labelsize=13)
-            axsCollision[2, 1].legend(fontsize=15)
-            axsCollision[2, 1].grid(True)
+        # # Plot collision 
+        # if collision_data.collision[-displayed_indices:]:
+        #     axsCollision[2, 1].clear()
+        #     axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='Collision', color='green')
+        #     for i, t in enumerate(collision_timestamps):
+        #         label = 'Min dist. point' if i == 0 else ""
+        #         axsCollision[2, 1].axvline(x=t, color='black', linestyle='--', label=label)
+        #     axsCollision[2, 1].set_title("Collision distance", fontsize=20)
+        #     axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=17)
+        #     axsCollision[2, 1].set_xlabel("Timestamp(s)", fontsize=17)
+        #     axsCollision[2, 1].tick_params(axis='both', labelsize=13)
+        #     axsCollision[2, 1].legend(fontsize=15)
+        #     axsCollision[2, 1].grid(True)
+        # else:
+        #     axsCollision[2, 1].clear()
+        #     axsCollision[2, 1].plot(collision_data.time[-displayed_indices:], collision_distance, label='No Collision', color='red')
+        #     axsCollision[2, 1].set_title("No Collision", fontsize=20)
+        #     axsCollision[2, 1].set_ylabel("Distance (m)", fontsize=17)
+        #     axsCollision[2, 1].tick_params(axis='both', labelsize=13)
+        #     axsCollision[2, 1].legend(fontsize=15)
+        #     axsCollision[2, 1].grid(True)
 
 
 
@@ -862,30 +866,31 @@ def update_plot(_):
 
     if enableAltitude:
         # Altitude boat
-        axsAltitude[0].clear()
-        axsAltitude[0].plot(boatData.gps.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
-        axsAltitude[0].set_title("Altitude Boat", fontsize=20)
-        axsAltitude[0].set_ylabel("Altitude (m)", fontsize=17)
-        axsAltitude[0].tick_params(axis='both', labelsize=13)
-        axsAltitude[0].legend(fontsize=15)
-        axsAltitude[0].grid(True)
+        # axsAltitude[0].clear()
+        # axsAltitude[0].plot(boatData.gps.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Altitude', color=colors.boat)
+        # axsAltitude[0].set_title("Altitude Boat", fontsize=20)
+        # axsAltitude[0].set_ylabel("Altitude (m)", fontsize=17)
+        # axsAltitude[0].tick_params(axis='both', labelsize=13)
+        # axsAltitude[0].legend(fontsize=15)
+        # axsAltitude[0].grid(True)
         # Altitude drone
-        axsAltitude[1].clear()
-        axsAltitude[1].plot(droneData.gps.time[-displayed_indices:], droneData.gps.alt[-displayed_indices:], label='Altitude', color=colors.drone)
-        axsAltitude[1].plot(callbacks.drone_data.time[-displayed_indices:], callbacks.drone_data.z_wanted[-displayed_indices:], label='Wanted Altitude', color="orange")
-        axsAltitude[1].set_title("Altitude Drone", fontsize=20)
-        axsAltitude[1].set_ylabel("Altitude (m)", fontsize=17)
-        axsAltitude[1].set_xlabel("Time (s)", fontsize=17)
+        axsAltitude.clear()
+        axsAltitude.plot(droneData.gps.time[-displayed_indices:], droneData.gps.alt[-displayed_indices:], label='Drone Z', color=colors.drone)
+        axsAltitude.plot(boatData.gps.time[-displayed_indices:], boatData.gps.alt[-displayed_indices:], label='Boat Z', color=colors.boat)
+        axsAltitude.plot(callbacks.drone_data.time[-displayed_indices:], callbacks.drone_data.z_wanted[-displayed_indices:], label='Wanted Drone Z', color="orange")
+        # axsAltitude.set_title("Altitude Drone", fontsize=20)
+        axsAltitude.set_ylabel("Altitude (m)", fontsize=20)
+        axsAltitude.set_xlabel("Time (s)", fontsize=20)
         if len (droneData.gps.time) > displayed_indices:
-            axsAltitude[1].set_xlim(left=droneData.gps.time[-displayed_indices])
-        axsAltitude[1].tick_params(axis='both', labelsize=13)
-        axsAltitude[1].legend(fontsize=15)
-        axsAltitude[1].grid(True)
+            axsAltitude.set_xlim(left=droneData.gps.time[-displayed_indices])
+        axsAltitude.tick_params(axis='both', labelsize=16)
+        axsAltitude.legend(fontsize=18)
+        axsAltitude.grid(True)
         
 
 
 # Show all plots non-blocking
-plt.tight_layout()
+# plt.tight_layout()
 plt.ion()  # Enable interactive mode
 plt.show(block=False)
 
