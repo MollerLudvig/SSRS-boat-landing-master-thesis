@@ -1,7 +1,26 @@
 from pyproj import CRS, Transformer
+import numpy as np
 
 def get_utm_zone(lon):
     return int((lon + 180) / 6) + 1
+
+def latlon_to_xy_vectors(lat, lon, lat0, lon0):
+    """Convert lat/lon to local UTM XY coordinates relative to (lat0, lon0)."""
+    utm_zone = get_utm_zone(lon0)
+    is_southern = lat0 < 0
+
+    crs_latlon = CRS.from_epsg(4326)  # WGS84
+    crs_utm = CRS.from_proj4(f"+proj=utm +zone={utm_zone} +ellps=WGS84 {'+south' if is_southern else ''}")
+    transformer = Transformer.from_crs(crs_latlon, crs_utm, always_xy=True)
+
+    # Convert to numpy arrays for vectorized subtraction
+    lon = np.asarray(lon)
+    lat = np.asarray(lat)
+
+    x, y = transformer.transform(lon, lat)
+    x0, y0 = transformer.transform(lon0, lat0)
+
+    return x - x0, y - y0
 
 def latlon_to_xy(lat, lon, lat0, lon0):
     """Convert lat/lon to local UTM XY coordinates relative to (lat0, lon0)."""
