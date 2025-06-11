@@ -28,15 +28,15 @@ enableDroneVelocityWindow = False
 enableBoatVelocityWindow = False
 enableRelativeVelocityWindow = False
 
-enableWindWindow = False
+enableWindWindow = True
 
 enableCollisionWindow = True
 
-enableDistToP = False
+enableDistToP = True
 
 enableAltitude = True
 
-savePlots = False
+savePlots = True
 
 displayed_indices = 150
 
@@ -83,7 +83,7 @@ if enablePositionWindow:
         figGlobal.suptitle("Global Position (Lat/Lon)", fontsize=25)
 
     if enableBoatTail:
-        figRmsTail, axRmsTail = plt.subplots(1, 1, figsize=(8, 5), num="Distance to aft projection", constrained_layout=True)
+        figRmsTail, axRmsTail = plt.subplots(1, 1, figsize=(12, 4), num="Distance to aft projection", constrained_layout=True)
         # figRmsTail.suptitle("Distance to aft projection", fontsize=25)
 
 if enableDroneAttitudeWindow:
@@ -107,7 +107,7 @@ if enableRelativeVelocityWindow:
     figRelVel.suptitle(f"Drone-Boat Relative Velocity", fontsize=14)
 
 if enableWindWindow:
-    figWind, axsWind = plt.subplots(2, 1, figsize=(8, 5), num="Wind Data", constrained_layout=True)
+    figWind, axsWind = plt.subplots(2, 1, figsize=(10, 5), num="Wind Data", constrained_layout=True)
     # figWind.suptitle(f"Wind Speed and Direction", fontsize=14)
 
 if enableCollisionWindow:
@@ -116,11 +116,11 @@ if enableCollisionWindow:
     figtimedelta, axtimedelta = plt.subplots(1, 1, figsize=(8, 5), num="Time Delta", constrained_layout=True)
 
 if enableDistToP:
-    figDistToP, axsDistToP = plt.subplots(3, 1, figsize=(8, 6), num="Distance to P1, P2, P3", constrained_layout=True)
-    figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
+    figDistToP, axsDistToP = plt.subplots(1, 1, figsize=(12, 4), num="Distance to P1, P2, P3", constrained_layout=True)
+    # figDistToP.suptitle(f"Distance to P1, P2, P3", fontsize=14)
 
 if enableAltitude:
-    figAltitude, axsAltitude = plt.subplots(1, 1, figsize=(14, 4), num="Altitude", constrained_layout=True)
+    figAltitude, axsAltitude = plt.subplots(1, 1, figsize=(12, 4), num="Altitude", constrained_layout=True)
     # figAltitude.suptitle(f"Altitude", fontsize=14)
 
 def get_vector_magnitude(x, y, z=0):
@@ -288,7 +288,8 @@ def plot_local_position():
         RMSE = np.sqrt(np.mean((np.array(plot_values))**2))
 
         axRmsTail.clear()
-        axRmsTail.plot(droneData.distance_to_tail_time[-int(displayed_indices/3):], plot_values, label="Distance to tail projection", color=colors.boat)
+        # axRmsTail.plot(droneData.distance_to_tail_time[-int(displayed_indices/3):], plot_values, label="Distance to tail projection", color=colors.boat)
+        axRmsTail.plot(droneData.distance_to_tail_time[-int(displayed_indices/3):], plot_values, color=colors.boat)
         axRmsTail.set_ylabel("Distance (m)", fontsize=17)
         axRmsTail.set_xlabel("Time (s)", fontsize=17)
         axRmsTail.set_title(f"Distance to aft projection. RMSE:{RMSE:.2f}", fontsize=20)
@@ -712,7 +713,7 @@ def update_plot(_):
         # Wind speed
         axsWind[0].clear()
         if droneData.wind.speed:  # Assuming wind data comes from boat
-            axsWind[0].plot(droneData.wind.time[-displayed_indices:], droneData.wind.speed[-displayed_indices:], label='Wind Speed', color='cyan')
+            axsWind[0].plot(droneData.wind.time[-displayed_indices:], droneData.wind.speed[-displayed_indices:], color='green')
             axsWind[0].set_title("Wind Speed", fontsize=20)
             axsWind[0].set_ylabel("m/s", fontsize=17)
             # axsWind[0].set_xlabel("Time (s)", fontsize=17)
@@ -724,8 +725,8 @@ def update_plot(_):
         # Wind direction
         axsWind[1].clear()
         if droneData.wind.direction:
-            axsWind[1].plot(droneData.wind.time[-displayed_indices:], droneData.wind.direction[-displayed_indices:], label='Wind Direction', color='magenta')
-            axsWind[1].set_title("Wind Direction", fontsize=20)
+            axsWind[1].plot(droneData.wind.time[-displayed_indices:], droneData.wind.direction[-displayed_indices:], color='purple')
+            axsWind[1].set_title("Wind Direction", fontsize=19)
             axsWind[1].set_ylabel("Degrees", fontsize=17)
             axsWind[1].set_xlabel("Time (s)", fontsize=17)
             axsWind[1].tick_params(axis='both', labelsize=15)
@@ -750,10 +751,10 @@ def update_plot(_):
         for i, t in enumerate(collision_timestamps):
             label = 'Min dist. point' if i == 0 else ""
             axsCollision[0, 0].axvline(x=t, color='black', linestyle='--', label=label)
+            axsCollision[0, 0].legend(fontsize=18)
         axsCollision[0, 0].set_title("Absolute Distance", fontsize=22)
         axsCollision[0, 0].set_ylabel("Distance (m)", fontsize=20)
         axsCollision[0, 0].tick_params(axis='both', labelsize=16)
-        axsCollision[0, 0].legend(fontsize=18)
         axsCollision[0, 0].grid(True)
         
         # Collision distance
@@ -762,10 +763,10 @@ def update_plot(_):
         for i, t in enumerate(collision_timestamps):
             label = 'Min dist. point' if i == 0 else ""
             axsCollision[0, 1].axvline(x=t, color='black', linestyle='--', label=label)
+            axsCollision[0, 1].legend(fontsize=18)
         axsCollision[0, 1].set_title("Delta X", fontsize=22)
         # axsCollision[0, 1].set_ylabel("Distance (m)", fontsize=17)
         axsCollision[0, 1].tick_params(axis='both', labelsize=16)
-        axsCollision[0, 1].legend(fontsize=18)
         axsCollision[0, 1].grid(True)
         
         # Collision delta time
@@ -774,11 +775,11 @@ def update_plot(_):
         for i, t in enumerate(collision_timestamps):
             label = 'Min dist. point' if i == 0 else ""
             axsCollision[1, 0].axvline(x=t, color='black', linestyle='--', label=label)
+            axsCollision[1, 0].legend(fontsize=18)
         axsCollision[1, 0].set_title("Delta Y", fontsize=22)
         axsCollision[1, 0].set_ylabel("Distance (m)", fontsize=20)
         axsCollision[1, 0].set_xlabel("Time (s)", fontsize=20)
         axsCollision[1, 0].tick_params(axis='both', labelsize=16)
-        axsCollision[1, 0].legend(fontsize=18)
         axsCollision[1, 0].grid(True)
         
         # Collision delta x
@@ -787,11 +788,11 @@ def update_plot(_):
         for i, t in enumerate(collision_timestamps):
             label = 'Min dist. point' if i == 0 else ""
             axsCollision[1, 1].axvline(x=t, color='black', linestyle='--', label=label)
+            axsCollision[1, 1].legend(fontsize=18)
         axsCollision[1, 1].set_title("Delta Z", fontsize=22)
         # axsCollision[1, 1].set_ylabel("Distance (m)", fontsize=17)
         axsCollision[1, 1].set_xlabel("Time (s)", fontsize=20)
         axsCollision[1, 1].tick_params(axis='both', labelsize=16)
-        axsCollision[1, 1].legend(fontsize=18)
         axsCollision[1, 1].grid(True)
 
         # Delta time
@@ -838,31 +839,39 @@ def update_plot(_):
     if enableDistToP:
 
         # Distance to P1
-        axsDistToP[0].clear()
+        axsDistToP.clear()
         if callbacks.P1:
-            axsDistToP[0].plot(callbacks.P1.time[-(int(displayed_indices/3)):], callbacks.P1.dist[-(int(displayed_indices/3)):], label='Distance to P1', color=colors.p1)
-            axsDistToP[0].set_title("Distance to P1")
-            axsDistToP[0].set_ylabel("Distance (m)")
-            axsDistToP[0].legend()
-            axsDistToP[0].grid(True)
+            # axsDistToP.plot(callbacks.P1.time[-(int(displayed_indices/3)):], callbacks.P1.dist[-(int(displayed_indices/3)):], label='Distance to P1', color=colors.p1)
+            axsDistToP.plot(callbacks.P1.time[-(int(displayed_indices/3)):], callbacks.P1.dist[-(int(displayed_indices/3)):], color=colors.p1)
+
+            # axsDistToP.set_title("Distance to P1", fontsize=20)
+            axsDistToP.set_ylabel("Distance (m)", fontsize=20)
+            axsDistToP.set_xlabel("Time (s)", fontsize=20)
+            # axsDistToP.legend(fontsize=18)
+            axsDistToP.tick_params(axis='both', labelsize=16)
+            axsDistToP.grid(True)
         
-        # Distance to P2
-        axsDistToP[1].clear()
-        if callbacks.P2:
-            axsDistToP[1].plot(callbacks.P2.time[-(int(displayed_indices/3)):], callbacks.P2.dist[-(int(displayed_indices/3)):], label='Distance to P2', color=colors.p2)
-            axsDistToP[1].set_title("Distance to P2")
-            axsDistToP[1].set_ylabel("Distance (m)")
-            axsDistToP[1].legend()
-            axsDistToP[1].grid(True)
+        # # Distance to P2
+        # axsDistToP[1].clear()
+        # if callbacks.P2:
+        #     axsDistToP[1].plot(callbacks.P2.time[-(int(displayed_indices/3)):], callbacks.P2.dist[-(int(displayed_indices/3)):], label='Distance to P2', color=colors.p2)
+        #     axsDistToP[1].set_title("Distance to P2", fontsize=20)
+        #     axsDistToP[1].set_ylabel("Distance (m)", fontsize=18)
+        #     axsDistToP[1].set_xlabel("Time (s)", fontsize=18)
+        #     axsDistToP[1].legend(fontsize=17)
+        #     axsDistToP[1].tick_params(axis='both', labelsize=15)
+        #     axsDistToP[1].grid(True)
         
-        # Distance to P3
-        axsDistToP[2].clear()
-        if callbacks.P3:
-            axsDistToP[2].plot(callbacks.P3.time[-(int(displayed_indices/3)):], callbacks.P3.dist[-(int(displayed_indices/3)):], label='Distance to P3', color=colors.p3)
-            axsDistToP[2].set_title("Distance to P3")
-            axsDistToP[2].set_ylabel("Distance (m)")
-            axsDistToP[2].legend()
-            axsDistToP[2].grid(True)
+        # # Distance to P3
+        # axsDistToP[2].clear()
+        # if callbacks.P3:
+        #     axsDistToP[2].plot(callbacks.P3.time[-(int(displayed_indices/3)):], callbacks.P3.dist[-(int(displayed_indices/3)):], label='Distance to P3', color=colors.p3)
+        #     axsDistToP[2].set_title("Distance to P3", fontsize=20)
+        #     axsDistToP[2].set_ylabel("Distance (m)", fontsize=18)
+        #     axsDistToP[2].legend(fontsize=17)
+        #     axsDistToP[2].set_xlabel("Time (s)", fontsize=18)
+        #     axsDistToP[2].tick_params(axis='both', labelsize=15)
+        #     axsDistToP[2].grid(True)
 
     if enableAltitude:
         # Altitude boat
