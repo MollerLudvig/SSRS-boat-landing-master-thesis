@@ -36,7 +36,7 @@ def tester():
     fluct_boat_movement = False
     fluct_boat_alt = False
     fluct_drone_throttle = False
-    maneuver_boat = False
+    maneuver_boat = True
 
     # PARAMETERS:
     Gr = 1/20 # Glide ratio
@@ -51,10 +51,10 @@ def tester():
     P2_lookahead = 30
 
     # FLUCTUATIONS:
-    boat_movement_fluctuation = 40 # Heading in degrees, 10 for landing, 30 for follow
+    boat_movement_fluctuation = 100 # Heading in degrees, 10 for landing, 30 for follow
     boat_alt_fluctuation = 6 # Meters
     throttle_fluct = 80
-    turning_fluctuation_angle = 40 # Degrees
+    turning_fluctuation_angle = 100 # Degrees
 
     # BASE VALUES:
     cruise_altitude = 15 # In meters
@@ -397,10 +397,20 @@ def tester():
                     "actual_sr": drone.vz,
                     "Gr": Gr})
                 
+                # boat.data.update({"time": timestamp,
+                #                   "altitude": boat.altitude,
+                #                   "lat": boat.lat,
+                #                   "lon": boat.lon})
                 boat.data.update({"time": timestamp,
-                                  "altitude": boat.altitude,
-                                  "lat": boat.lat,
-                                  "lon": boat.lon})
+                                  "kf_x": float("nan") if not use_filter else kf.x[0][0],
+                                  "kf_y": float("nan") if not use_filter else kf.x[1][0],
+                                  "kf_lat": float("nan") if not use_filter else kf.lat,
+                                  "kf_lon": float("nan") if not use_filter else kf.lon,
+                                  "kf_speed": float("nan") if not use_filter else kf.x[2][0],
+                                  "kf_heading": float("nan") if not use_filter else kf.x[3][0],
+                                  "real_heading": boat.heading,
+                                  "real_lat": boat.lat_sim,
+                                  "real_lon": boat.lon_sim})
                 
                 # Send data to redis stream
                 rc.send_message("drone data", drone.data)
@@ -482,13 +492,13 @@ def tester():
         if "time" not in drone.data or ("time" in drone.data and drone.data["time"] != timestamp):
 
             # Update wanted z for a few itters after quitting # THIS NO BUENO BUT FOR PLOTTING YOU KNOW
-            if decent_started and landing_iterator <= 10:
+            if decent_started and ittrs_after_descent <= 10:
                 distance_to_prev_P3 = wp.dist_between_coords(drone.lat, drone.lon, P3_lat, P3_lon)
                 z_wanted = (min(cruise_altitude, (max(0, distance_to_prev_P3))*prev_Gr + boat.altitude - aim_under_boat))
-                landing_iterator += 1
+                ittrs_after_descent += 1
             else:
                 z_wanted = cruise_altitude
-                landing_iterator = 0
+                ittrs_after_descent = 0
                 decent_started = False
 
             print("updating drone data")
